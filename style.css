@@ -166,3 +166,20 @@ main { padding: 0 16px; }
 }
 .tabbar button span { font-size: 19px; line-height: 1.2; }
 .tabbar button.active { color: var(--accent); font-weight: 700; }
+
+/* sharing */
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+.sync-badge { font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); }
+.sync-badge.off { background: var(--line); color: var(--muted); }
+.divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; margin: 20px 0 14px; }
+.divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+#joinForm { display: grid; gap: 14px; text-align: left; }
+.code-input { text-transform: uppercase; letter-spacing: 4px; font-weight: 700; text-align: center; }
+.invite { text-align: center; display: grid; gap: 8px; justify-items: center; }
+.invite-code { font-size: 30px; font-weight: 800; letter-spacing: 6px; color: var(--accent); text-align: center; }
+.mood-pick.readonly button { cursor: default; }
+.toast {
+  position: fixed; left: 50%; bottom: calc(90px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 13px; z-index: 30;
+  max-width: calc(100% - 32px);
+}

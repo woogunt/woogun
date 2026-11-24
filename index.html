@@ -21,20 +21,36 @@
         <label>나의 이름<input name="me" required maxlength="12" placeholder="예) 우건" /></label>
         <label>상대 이름<input name="you" required maxlength="12" placeholder="예) 지민" /></label>
         <label>처음 만난 날<input name="start" type="date" required /></label>
-        <button class="btn primary" type="submit">시작하기</button>
+        <button class="btn primary" type="submit">새로 시작하기</button>
       </form>
+      <div id="joinBox" class="hidden">
+        <div class="divider"><span>또는</span></div>
+        <form id="joinForm">
+          <label>상대에게 받은 초대 코드<input name="code" required maxlength="6" placeholder="예) K7MP2Q" autocomplete="off" class="code-input" /></label>
+          <button class="btn" type="submit">초대 코드로 연결하기</button>
+        </form>
+      </div>
+      <p class="muted small" id="setupMsg"></p>
     </div>
   </section>
 
   <div id="app" class="app hidden">
     <header class="topbar">
       <h2 id="pageTitle">홈</h2>
-      <button class="icon-btn" id="themeBtn" aria-label="테마 변경">◐</button>
+      <div class="topbar-right">
+        <span id="syncBadge" class="sync-badge hidden"></span>
+        <button class="icon-btn" id="themeBtn" aria-label="테마 변경">◐</button>
+      </div>
     </header>
 
     <main>
       <!-- 홈 -->
       <section class="page" data-page="home">
+        <div id="inviteBanner" class="card invite hidden">
+          <div class="muted small">상대에게 이 초대 코드를 보내주세요</div>
+          <div class="invite-code" id="inviteCodeHome"></div>
+          <button class="btn" data-copy-code>코드 복사</button>
+        </div>
         <div class="hero card">
           <div class="couple">
             <span id="nameMe" class="name"></span>
@@ -126,7 +142,7 @@
       <section class="page hidden" data-page="letters">
         <div class="card">
           <form id="letterForm" class="stack">
-            <select name="from" id="letterFrom"></select>
+            <div class="muted small" id="letterFrom"></div>
             <textarea name="body" rows="4" placeholder="마음을 전해보세요" required maxlength="1000"></textarea>
             <button class="btn primary" type="submit">편지 남기기</button>
           </form>
@@ -157,6 +173,17 @@
             <button class="btn primary" type="submit">저장</button>
           </form>
         </div>
+        <div class="card stack" id="shareCard">
+          <div class="card-head"><h3>실시간 공유</h3><span class="pill" id="shareStatus"></span></div>
+          <p class="muted small" id="shareDesc"></p>
+          <div id="shareInvite" class="hidden">
+            <div class="invite-code" id="inviteCodeSettings"></div>
+            <button class="btn full" data-copy-code>코드 복사</button>
+          </div>
+          <button class="btn primary" id="startShareBtn">공유 시작하기 (초대 코드 만들기)</button>
+          <button class="btn" id="resetInviteBtn">상대 기기 다시 연결 (새 초대 코드)</button>
+          <button class="btn danger" id="leaveBtn">이 기기에서 연결 끊기</button>
+        </div>
         <div class="card stack">
           <button class="btn" id="exportBtn">데이터 내보내기 (JSON)</button>
           <label class="btn">데이터 가져오기<input type="file" id="importInput" accept="application/json" hidden /></label>
@@ -183,6 +210,9 @@
     </div>
   </div>
 
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="firebase-config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

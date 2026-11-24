@@ -1,0 +1,34 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function room(roomId) { return get(/databases/$(database)/documents/rooms/$(roomId)).data; }
+    function isMember(roomId) { return signedIn() && request.auth.uid in room(roomId).members; }
+
+    // 초대 코드: 코드를 아는 사람만 조회(get) 가능, 목록 조회(list)는 불가
+    match /invites/{code} {
+      allow get: if signedIn() && resource.data.expiresAt > request.time;
+      allow create: if isMember(request.resource.data.roomId);
+      allow delete: if isMember(resource.data.roomId);
+    }
+
+    match /rooms/{roomId} {
+      allow create: if signedIn() && request.resource.data.members == [request.auth.uid];
+      allow read: if signedIn() && request.auth.uid in resource.data.members;
+      allow update: if signedIn() && (
+        // 멤버는 자유롭게 수정 (단, 멤버 목록은 비우거나 3명 이상 불가)
+        (request.auth.uid in resource.data.members
+          && request.auth.uid in request.resource.data.members
+          && request.resource.data.members.size() <= 2)
+        // 비멤버는 빈 자리가 있을 때 자기 자신만 추가 가능
+        || (resource.data.members.size() < 2
+          && request.resource.data.members == resource.data.members.concat([request.auth.uid])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']))
+      );
+
+      match /{coll}/{id} {
+        allow read, write: if coll in ['events', 'bucket', 'letters', 'photos'] && isMember(roomId);
+      }
+    }
+  }
+}
