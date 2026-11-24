@@ -44,7 +44,9 @@
   const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } };
 
   let state = Object.assign(defaults(), readJSON(KEY) || {});
-  let local = Object.assign({ widgets: DEFAULT_WIDGETS.slice(), bg: null, lastSeen: Date.now() }, readJSON(LOCAL_KEY) || {});
+  let local = Object.assign({ widgets: DEFAULT_WIDGETS.slice(), bg: null, lastSeen: Date.now(), glass: { alpha: 0.32, blur: 24, tone: "auto" } }, readJSON(LOCAL_KEY) || {});
+  if (!local.glass) local.glass = { alpha: 0.32, blur: 24, tone: "auto" };
+  if (!local.glass.tone) local.glass.tone = "auto";
   let session = readJSON(SESSION_KEY); // 공유 모드: { roomId, role, code? }
 
   // ---- 이전 버전 데이터 변환 ----
@@ -682,7 +684,8 @@
   function widgetHTML(key, opts = {}) {
     const w = WIDGETS[key];
     if (!w) return "";
-    return `<section class="widget glass ${w.cls || ""}" ${!opts.preview && w.page ? `data-open="${w.page}"` : ""} data-w="${key}">${w.html()}</section>`;
+    const tone = opts.preview ? "" : `data-tone="${toneCache[key] || (local.glass.tone === "dark" ? "dark" : "light")}"`;
+    return `<section class="widget glass ${w.cls || ""}" ${!opts.preview && w.page ? `data-open="${w.page}"` : ""} data-w="${key}" ${tone}>${w.html()}</section>`;
   }
 
   function diaryItemHTML(d) {
@@ -708,6 +711,7 @@
       || `<div class="widget glass" data-action="gallery"><div class="empty-hint">홈 화면이 비어 있어요. ＋를 눌러 블럭을 추가해보세요.</div></div>`);
     $("#bellDot").classList.toggle("hidden", !notifications().some((n) => n.at > local.lastSeen));
     fitPatterns($("#widgets"));
+    updateTones();
   }
 
   function applyBg() {
@@ -715,6 +719,99 @@
     const src = safeImg(local.bg);
     bg.style.backgroundImage = src ? `url('${src}')` : "";
     bg.classList.toggle("photo", !!src);
+    applyGlass();
+  }
+  // 블럭 반투명 정도와 블러 세기 (기기별)
+  function applyGlass() {
+    const a = Math.min(0.85, Math.max(0.05, +local.glass.alpha || 0.32));
+    const b = Math.min(40, Math.max(0, +local.glass.blur || 0));
+    const root = document.documentElement.style;
+    root.setProperty("--glass-alpha", a);
+    root.setProperty("--glass-border", Math.min(0.7, a + 0.15));
+    root.setProperty("--glass-blur", `${b}px`);
+    buildLumGrid();
+  }
+
+  // ---- 블럭 색 자동: 블럭 뒤에 있는 배경 부분의 밝기를 보고 밝은/어두운 유리를 고름 ----
+  const GRID_W = 24, GRID_H = 48;
+  let lumGrid = null; // 화면 크기에 맞춰 잘린(cover) 배경의 밝기 격자
+  let lumImg = null;
+  function buildLumGrid() {
+    const src = safeImg(local.bg);
+    if (!src) { lumGrid = null; lumImg = null; updateTones(); return; }
+    const draw = (img) => {
+      const c = document.createElement("canvas"); c.width = GRID_W; c.height = GRID_H;
+      const g = c.getContext("2d");
+      // background-size: cover 와 같은 방식으로 자르기
+      const vw = innerWidth, vh = innerHeight;
+      const sc = Math.max(vw / img.width, vh / img.height);
+      const sw = vw / sc, sh = vh / sc;
+      g.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, 0, 0, GRID_W, GRID_H);
+      const d = g.getImageData(0, 0, GRID_W, GRID_H).data;
+      lumGrid = new Float32Array(GRID_W * GRID_H);
+      for (let i = 0; i < lumGrid.length; i++) lumGrid[i] = (0.2126 * d[i * 4] + 0.7152 * d[i * 4 + 1] + 0.0722 * d[i * 4 + 2]) / 255;
+      updateTones();
+    };
+    if (lumImg && lumImg.src === src && lumImg.complete) return draw(lumImg);
+    lumImg = new Image();
+    lumImg.onload = () => draw(lumImg);
+    lumImg.src = src;
+  }
+  function lumAt(rect) {
+    if (!lumGrid) return 1;
+    const x0 = Math.max(0, Math.floor((rect.left / innerWidth) * GRID_W)), x1 = Math.min(GRID_W, Math.ceil((rect.right / innerWidth) * GRID_W));
+    const y0 = Math.max(0, Math.floor((rect.top / innerHeight) * GRID_H)), y1 = Math.min(GRID_H, Math.ceil((rect.bottom / innerHeight) * GRID_H));
+    let sum = 0, n = 0;
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { sum += lumGrid[y * GRID_W + x]; n++; }
+    return n ? sum / n : null;
+  }
+  function toneFor(el) {
+    if (local.glass.tone !== "auto") return local.glass.tone;
+    if (!lumGrid) return "light";
+    const l = lumAt(el.getBoundingClientRect());
+    if (l == null) return el.dataset.tone || "light"; // 화면 밖이면 그대로
+    // 경계에서 깜빡이지 않도록 약간의 여유
+    const cur = el.dataset.tone;
+    if (cur === "dark") return l > 0.56 ? "light" : "dark";
+    if (cur === "light") return l < 0.48 ? "dark" : "light";
+    return l < 0.52 ? "dark" : "light";
+  }
+  const toneCache = {}; // 다시 그릴 때 깜빡이지 않도록 블럭별 마지막 색을 기억
+  function updateTones() {
+    $$("#widgets .glass").forEach((el) => {
+      el.dataset.tone = toneFor(el);
+      if (el.dataset.w) toneCache[el.dataset.w] = el.dataset.tone;
+    });
+    // 설정의 미리보기 카드는 전체 사진 밝기 기준
+    const overall = local.glass.tone !== "auto" ? local.glass.tone
+      : (safeImg(local.bg) && local.bgLum != null && local.bgLum < 0.5 ? "dark" : "light");
+    $$(".bg-preview-card").forEach((el) => { el.dataset.tone = overall; });
+  }
+  let toneRaf = 0;
+  const scheduleTones = () => { if (!toneRaf) toneRaf = requestAnimationFrame(() => { toneRaf = 0; updateTones(); }); };
+  window.addEventListener("scroll", scheduleTones, { passive: true });
+  window.addEventListener("resize", () => buildLumGrid());
+  // 사진의 평균 밝기 (0~1)
+  function imageLuminance(src) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement("canvas"); c.width = 24; c.height = 48;
+        const g = c.getContext("2d"); g.drawImage(img, 0, 0, 24, 48);
+        const d = g.getImageData(0, 0, 24, 48).data;
+        let sum = 0;
+        for (let i = 0; i < d.length; i += 4) sum += (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255;
+        resolve(sum / (d.length / 4));
+      };
+      img.onerror = () => resolve(null);
+      img.src = src;
+    });
+  }
+  function bgPreviewHTML() {
+    return `<div class="bg-preview ${safeImg(local.bg) ? "" : "default"}" ${bgStyle(local.bg)} data-action="bg-change" role="button" aria-label="배경화면 바꾸기">
+      <div class="glass bg-preview-card"><strong>D+${ddayCount()}</strong><span>${esc(nameOf(role()))} ♥ ${esc(nameOf(other()))}</span></div>
+      <div class="glass bg-preview-card small"></div>
+    </div>`;
   }
 
   // =========================================================
@@ -751,6 +848,7 @@
     $("#pageBody").scrollTop = scrollTop ? 0 : scroll;
     fitPatterns($("#pageBody"));
     fitOne();
+    updateTones();
   }
 
   const addBtn = (action, label = "＋ 추가", extra = "") => `<button class="add-btn" data-action="${action}" ${extra}>${label}</button>`;
@@ -760,7 +858,12 @@
     gallery: {
       title: "블럭 추가",
       html() {
-        return `<p class="muted small" style="margin:0 4px 14px">블럭을 누르면 홈 화면에 추가되고 바로 열려요.</p>
+        return `<div class="card bg-quick" data-action="bg-change" data-close="1" role="button">
+            <div class="bg-thumb ${safeImg(local.bg) ? "" : "default"}" ${bgStyle(local.bg)}></div>
+            <div class="grow"><strong>홈 배경화면</strong><div class="muted small">눌러서 내 사진으로 바꾸기</div></div>
+            <span class="pill">바꾸기</span>
+          </div>
+          <p class="muted small" style="margin:0 4px 14px">블럭을 누르면 홈 화면에 추가되고 바로 열려요.</p>
           ${Object.keys(WIDGETS).sort((x, y) => local.widgets.includes(x) - local.widgets.includes(y)).map((k) => {
             const added = local.widgets.includes(k);
             return `<div class="gallery-item" data-action="w-add" data-k="${k}">
@@ -985,7 +1088,22 @@
       html() {
         const p = state.profile, on = shared(), waiting = on && memberCount < 2;
         const mine = local.widgets;
-        return `<div class="card"><h3>홈 블럭</h3>
+        return `<div class="card stack" id="bgCard"><h3 style="margin:0">홈 배경화면</h3>
+            ${bgPreviewHTML()}
+            <div class="bg-btns">
+              <button class="btn primary" data-action="bg-change">🖼️ 배경화면 바꾸기</button>
+              ${local.bg ? `<button class="btn" data-action="bg-reset">기본 배경</button>` : ""}
+            </div>
+            <div><div class="field-label">블럭 색</div>
+              <div class="seg" style="margin:6px 0 0">${[["auto", "자동"], ["light", "밝게"], ["dark", "어둡게"]].map(([v, l]) =>
+                `<button type="button" class="${local.glass.tone === v ? "on" : ""}" data-action="glass-tone" data-v="${v}">${l}</button>`).join("")}</div></div>
+            <label for="glassAlpha">블럭 투명도 <span class="muted" id="glassAlphaVal">${Math.round((1 - local.glass.alpha) * 100)}%</span>
+              <input type="range" id="glassAlpha" min="15" max="95" step="1" value="${Math.round((1 - local.glass.alpha) * 100)}" class="range" /></label>
+            <label for="glassBlur">블러 세기 <span class="muted" id="glassBlurVal">${local.glass.blur}</span>
+              <input type="range" id="glassBlur" min="0" max="40" step="1" value="${local.glass.blur}" class="range" /></label>
+            <p class="muted small" style="margin:0">배경화면과 블럭 설정은 이 기기에만 적용돼요.</p>
+          </div>
+          <div class="card"><h3>홈 블럭</h3>
             <p class="muted small" style="margin:-4px 0 6px">홈 화면에서 블럭을 꾹 누르면 끌어서 순서를 바꿀 수 있어요.</p>
             <ul class="list my-widgets">${mine.map((k, i) => `<li><span class="grow">${WIDGETS[k].name}</span>
               <button class="icon-sq" data-action="w-up" data-k="${k}" ${i === 0 ? "disabled" : ""} aria-label="${WIDGETS[k].name} 위로">↑</button>
@@ -1001,10 +1119,6 @@
               <label class="row"><input type="checkbox" name="dayOne" ${p.dayOne ? "checked" : ""} /> 만난 날을 1일로 세기</label>
               <button class="btn primary" type="submit">저장</button>
             </form></div>
-          <div class="card stack"><h3 style="margin:0">배경 사진</h3>
-            <p class="muted small" style="margin:0">홈 화면 배경은 이 기기에만 적용돼요.</p>
-            <button class="btn" data-action="bg-change">배경 사진 바꾸기</button>
-            ${local.bg ? `<button class="btn" data-action="bg-reset">기본 배경으로</button>` : ""}</div>
           ${SHARE_ENABLED || on ? `<div class="card stack">
             <div class="w-title" style="margin:0"><span style="font-size:16px">실시간 공유</span><span class="pill">${!on ? "꺼짐" : waiting ? "대기 중" : "연결됨"}</span></div>
             <p class="muted small" style="margin:0">${!on
@@ -1269,11 +1383,19 @@
       $("#viewer").classList.remove("hidden");
     },
 
-    "bg-change": async () => {
+    "bg-change": async (el) => {
       const [f] = await pickImages(); if (!f) return;
-      try { local.bg = await resizeImage(f, 1280, 0.7); saveLocal(); applyBg(); render(); } catch { toast("사진을 읽을 수 없어요."); }
+      try {
+        local.bg = await resizeImage(f, 1600, 0.72);
+        local.bgLum = await imageLuminance(local.bg);
+        saveLocal(); applyBg();
+        if (el.dataset.close) closeAllPages();
+        render();
+        toast("배경화면을 바꿨어요");
+      } catch { toast("사진을 읽을 수 없어요."); }
     },
-    "bg-reset": () => { local.bg = null; saveLocal(); applyBg(); render(); },
+    "bg-reset": () => { local.bg = null; local.bgLum = null; saveLocal(); applyBg(); render(); },
+    "glass-tone": (el) => { local.glass.tone = el.dataset.v; saveLocal(); updateTones(); renderPage(); },
 
     "copy-code": () => {
       if (!session?.code) return;
@@ -1390,6 +1512,7 @@
     const base = el.getBoundingClientRect().top;
     press.shift = y - press.grab - base;
     el.style.transform = `translateY(${press.shift}px) scale(1.03)`;
+    scheduleTones();
   }
   function pressEnd() {
     if (!press) return;
@@ -1474,6 +1597,16 @@
       dayOne: f.get("dayOne") === "on",
     });
     toast("저장했어요.");
+  });
+  document.addEventListener("input", (e) => {
+    if (e.target.id === "glassAlpha") {
+      local.glass.alpha = (100 - +e.target.value) / 100;
+      $("#glassAlphaVal").textContent = `${e.target.value}%`;
+    } else if (e.target.id === "glassBlur") {
+      local.glass.blur = +e.target.value;
+      $("#glassBlurVal").textContent = e.target.value;
+    } else return;
+    applyGlass(); saveLocal();
   });
   document.addEventListener("change", async (e) => {
     if (e.target.id !== "importInput") return;

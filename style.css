@@ -35,12 +35,14 @@ button { font: inherit; color: inherit; }
 .bg.photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.18), rgba(0,0,0,0) 30%); }
 
 /* 유리 카드 */
+/* 유리 카드: 투명도/블러는 설정에서 바꿀 수 있음 */
+:root { --glass-alpha: 0.32; --glass-border: 0.47; --glass-blur: 24px; }
 .glass {
-  background: rgba(255, 255, 255, 0.36);
-  -webkit-backdrop-filter: blur(22px) saturate(160%);
-  backdrop-filter: blur(22px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  box-shadow: 0 8px 30px rgba(20, 40, 80, 0.12);
+  background: rgba(255, 255, 255, var(--glass-alpha));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(170%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, var(--glass-border));
+  box-shadow: 0 8px 30px rgba(20, 40, 80, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
 /* 입력 */
@@ -332,3 +334,48 @@ body.reordering { cursor: grabbing; }
 .district-shape .map-svg { max-height: 140px; }
 .district-shape .map-svg path { fill: var(--visited); stroke: #fff; stroke-width: 3; cursor: default; }
 .district-head .btn:disabled { opacity: 1; }
+
+/* 배경화면 설정 */
+.bg-preview {
+  position: relative; height: 210px; border-radius: 22px; overflow: hidden; cursor: pointer;
+  background: center / cover no-repeat; display: grid; align-content: start; gap: 10px; padding: 16px;
+  isolation: isolate;
+}
+.bg-preview.default, .bg-thumb.default { background-image: linear-gradient(180deg, #7ea6e0 0%, #a9c8f0 45%, #dbe7f7 100%); }
+.bg-preview-card { border-radius: 20px; padding: 14px 16px; display: grid; gap: 2px; }
+.bg-preview-card strong { font-size: 26px; font-weight: 900; }
+.bg-preview-card span { font-size: 12px; color: var(--muted); }
+.bg-preview-card.small { height: 70px; }
+.bg-btns { display: flex; gap: 8px; }
+.bg-btns .btn { flex: 1; }
+.range { width: 100%; padding: 0; background: none; accent-color: var(--text); margin-top: 8px; height: 28px; }
+.bg-quick { display: flex; align-items: center; gap: 14px; cursor: pointer; }
+.bg-thumb { width: 54px; height: 80px; border-radius: 12px; background: center / cover no-repeat; flex: none; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+
+.field-label { font-size: 13px; font-weight: 600; color: var(--muted); }
+
+/* 어두운 유리 블럭 (어두운 배경화면용) */
+.glass[data-tone="dark"] {
+  background: rgba(22, 24, 30, var(--glass-alpha));
+  border-color: rgba(255, 255, 255, calc(var(--glass-border) * 0.4));
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.widget[data-tone="dark"], .bg-preview-card[data-tone="dark"] { --text: #fff; --muted: rgba(255, 255, 255, 0.72); color: #fff; }
+.widget[data-tone="dark"] .clamp { color: rgba(255, 255, 255, 0.85); }
+.widget[data-tone="dark"] .w-btn, .widget[data-tone="dark"] .btn.ghost { background: rgba(255, 255, 255, 0.16); color: #fff; box-shadow: none; }
+.widget[data-tone="dark"] .tile, .widget[data-tone="dark"] .duo .slot { border-color: rgba(255, 255, 255, 0.3); color: rgba(255, 255, 255, 0.85); }
+.widget[data-tone="dark"] .tile.has-photo { color: #fff; }
+.widget[data-tone="dark"] .thumb { background-color: rgba(255, 255, 255, 0.14); }
+.widget[data-tone="dark"] .diary-item { border-top-color: rgba(255, 255, 255, 0.15); }
+.widget[data-tone="dark"] .list li { border-top-color: rgba(255, 255, 255, 0.14); }
+.widget[data-tone="dark"] .bar, .widget[data-tone="dark"] .progress { background: rgba(255, 255, 255, 0.18); }
+.widget[data-tone="dark"] .mini-cal .today { color: #1d1d22; }
+.widget[data-tone="dark"] .mini-cal .today::before { background: #fff; }
+.widget[data-tone="dark"] .sun { color: #ff8a8f; }
+.widget[data-tone="dark"] .sat { color: #8fb4ff; }
+.widget[data-tone="dark"] .who-p1 { color: #ff9ab3; }
+.widget[data-tone="dark"] .who-p2 { color: #9cb9ff; }
+.widget[data-tone="dark"] .map-svg path:not(.on):not(.photo) { fill: rgba(255, 255, 255, 0.22); stroke: rgba(255, 255, 255, 0.35); }
+.widget[data-tone="dark"] .mood-pick button.on { background: rgba(255, 255, 255, 0.22); }
+.glass { transition: background-color .35s ease, border-color .35s ease, color .35s ease, transform .15s ease; }
+.widget.dragging { transition: none; }
