@@ -302,3 +302,21 @@ label.row input { width: auto; margin: 0; }
 .ask-card .modal-btns { grid-template-columns: 1fr 1fr; }
 .ask-card .btn { background: #f1f2f5; box-shadow: none; }
 .ask-card .btn.primary { background: #1d1d22; color: #fff; }
+
+/* ＋ 빠른 기록 */
+.quick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.quick-grid button {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; border: none; cursor: pointer;
+  background: #f4f5f8; border-radius: 18px; padding: 14px 4px; font-size: 12.5px; font-weight: 700;
+}
+.quick-grid button span { font-size: 26px; line-height: 1; }
+.quick-grid button:active { background: #e6e8ee; }
+@media (max-width: 360px) { .quick-grid { grid-template-columns: repeat(3, 1fr); } }
+
+/* 위젯 안에서 누를 수 있는 곳 */
+.mini-cal .g span[data-action], .duo .slot[data-action] { cursor: pointer; }
+.widget { transition: transform .15s ease; }
+.widget:active { transform: scale(.985); }
+.widget.flash { animation: flash 1.6s ease-out; }
+@keyframes flash { 0%, 40% { box-shadow: 0 0 0 4px rgba(255,255,255,.95), 0 8px 30px rgba(20,40,80,.2); } 100% { box-shadow: 0 8px 30px rgba(20,40,80,.12); } }
+@media (prefers-reduced-motion: reduce) { .widget, .widget.flash, .page-sheet, .modal-card { animation: none; transition: none; } }
