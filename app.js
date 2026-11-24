@@ -719,6 +719,9 @@
     const src = safeImg(local.bg);
     bg.style.backgroundImage = src ? `url('${src}')` : "";
     bg.classList.toggle("photo", !!src);
+    // 블럭 화면 바탕(블러)에도 같은 사진 사용
+    document.documentElement.style.setProperty("--bg-image", src ? `url("${src}")` : "none");
+    document.documentElement.classList.toggle("has-bg", !!src);
     applyGlass();
   }
   // 블럭 반투명 정도와 블러 세기 (기기별)
@@ -786,6 +789,7 @@
     const overall = local.glass.tone !== "auto" ? local.glass.tone
       : (safeImg(local.bg) && local.bgLum != null && local.bgLum < 0.5 ? "dark" : "light");
     $$(".bg-preview-card").forEach((el) => { el.dataset.tone = overall; });
+    $("#page").dataset.tone = overall;
   }
   let toneRaf = 0;
   const scheduleTones = () => { if (!toneRaf) toneRaf = requestAnimationFrame(() => { toneRaf = 0; updateTones(); }); };
