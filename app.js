@@ -32,7 +32,7 @@
   const defaults = () => ({
     profile: null, // { p1, p2, start, dayOne }
     moods: {},     // { "YYYY-MM-DD": { p1, p2 } }
-    events: [],    // { id, date, title, by, at }
+    events: [],    // { id, date, title, owner: "p1"|"p2"|"both", time?, memo?, by, at }
     bucket: [],    // { id, title, done, by, at }
     diary: [],     // { id, date, title, body, photo, by, at }
     records: [],   // { id, cat, title, date, rating, memo, photo, by, at }
@@ -1001,37 +1001,93 @@
       },
     },
 
-    // ---- 캘린더 ----
+    // ---- 커플 캘린더 ----
     calendar: {
-      title: "캘린더",
-      action: () => addBtn("event-new", "＋ 일정"),
+      title: "",
+      action: () => `<button class="round-glass" data-action="cal-search" aria-label="일정 검색">🔍</button>`,
       html() {
         const cm = ui.calMonth || (ui.calMonth = new Date(today().getFullYear(), today().getMonth(), 1));
         const sel = ui.selDate || (ui.selDate = ymd(today()));
+        const who = ui.calWho || (ui.calWho = { p1: true, p2: true, both: true });
+        const showPhotos = local.calPhotos !== false;
         const y = cm.getFullYear(), m = cm.getMonth();
         const first = new Date(y, m, 1);
         const startD = addDays(first, -first.getDay());
+        const weeks = Math.ceil((first.getDay() + new Date(y, m + 1, 0).getDate()) / 7);
         const t = ymd(today());
         const special = specialDays();
-        const ev = new Set(state.events.map((x) => x.date));
-        let grid = "";
-        for (let i = 0; i < 42; i++) {
+
+        // 날짜별로 묶기
+        const evBy = {};
+        for (const e of state.events) if (who[ownerOf(e)]) (evBy[e.date] = evBy[e.date] || []).push(e);
+        for (const k in evBy) evBy[k].sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+        const phBy = photosByDate();
+
+        let cells = "";
+        for (let i = 0; i < weeks * 7; i++) {
           const d = addDays(startD, i); const k = ymd(d);
-          const cls = [d.getMonth() !== m && "other", k === t && "today", k === sel && "sel", (ev.has(k) || special.has(k)) && "heart",
+          const evs = evBy[k] || [];
+          const ph = showPhotos && phBy[k] && phBy[k][0];
+          const cls = ["c2", d.getMonth() !== m && "other", k === t && "today", k === sel && "sel",
             d.getDay() === 0 && "sun", d.getDay() === 6 && "sat"].filter(Boolean).join(" ");
-          grid += `<button type="button" data-action="cal-sel" data-v="${k}" class="${cls}">${d.getDate()}</button>`;
+          let body = "";
+          if (special.has(k)) body += `<span class="ev anniv">♥ ${esc(special.get(k))}</span>`;
+          if (ph) body += `<span class="c2-photo" ${bgStyle(ph.src)}>${evs.length ? `<i class="c2-dot ${ownerOf(evs[0])}"></i>` : ""}</span>`;
+          else {
+            const max = special.has(k) ? 1 : 2;
+            body += evs.slice(0, max).map((e) => `<span class="ev ${ownerOf(e)}">${esc(e.title)}</span>`).join("");
+            if (evs.length > max) body += `<span class="ev more">+${evs.length - max}</span>`;
+          }
+          cells += `<button type="button" class="${cls}" data-action="cal-sel" data-v="${k}"><span class="c2-num">${d.getDate()}</span>${body}</button>`;
         }
-        const items = [];
-        if (special.has(sel)) items.push(`<li><span class="grow">♥ ${special.get(sel)}</span><span class="tag">기념일</span></li>`);
-        state.events.filter((x) => x.date === sel).forEach((x) => items.push(
-          `<li><span class="grow">${esc(x.title)}</span><span class="tag who-${x.by === "p2" ? "p2" : "p1"}">${esc(nameOf(x.by))}</span><button class="del" data-action="del" data-coll="events" data-id="${esc(x.id)}" aria-label="삭제">✕</button></li>`));
-        state.diary.filter((x) => x.date === sel).forEach((x) => items.push(
-          `<li data-action="open" data-page="diary"><span class="grow">✍️ ${esc(x.title)}</span><span class="tag">일기</span></li>`));
-        return `<div class="card">
-            <div class="cal-head"><button data-action="cal-move" data-v="-1" aria-label="이전 달">‹</button><strong>${y}년 ${m + 1}월</strong><button data-action="cal-move" data-v="1" aria-label="다음 달">›</button></div>
-            <div class="cal-week">${WD.map((w) => `<span>${w}</span>`).join("")}</div>
-            <div class="cal-grid">${grid}</div></div>
-          <div class="card"><h3>${fmtW(parse(sel))}</h3><ul class="list">${items.join("") || `<li class="empty">일정이 없어요</li>`}</ul></div>`;
+
+        // 선택한 날
+        const selEvents = state.events.filter((e) => e.date === sel).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+        const selPhotos = phBy[sel] || [];
+        const selDiary = state.diary.filter((x) => x.date === sel);
+        const ownerLabel = (o) => (o === "both" ? "우리" : nameOf(o));
+        const list = [
+          ...(special.has(sel) ? [`<div class="day-item anniv"><span class="pill2 anniv">기념일</span><span class="grow">♥ ${esc(special.get(sel))}</span></div>`] : []),
+          ...selEvents.map((e) => `<button class="day-item" data-action="event-edit" data-id="${esc(e.id)}">
+              <span class="pill2 ${ownerOf(e)}">${esc(ownerLabel(ownerOf(e)))}</span>
+              <span class="grow"><b>${esc(e.title)}</b>${e.memo ? `<span class="muted small"> · ${esc(e.memo)}</span>` : ""}</span>
+              ${e.time ? `<span class="muted small">${esc(e.time)}</span>` : ""}</button>`),
+          ...selDiary.map((x) => `<button class="day-item" data-action="open" data-page="diary"><span class="pill2 diary">일기</span><span class="grow">✍️ ${esc(x.title)}</span></button>`),
+        ];
+
+        const search = ui.calSearch ? (() => {
+          const q = ui.calSearch.toLowerCase();
+          const hits = state.events.filter((e) => (e.title + " " + (e.memo || "")).toLowerCase().includes(q)).sort((a, b) => b.date.localeCompare(a.date));
+          return `<div class="card"><div class="w-title" style="margin-bottom:8px"><span style="font-size:16px">🔍 "${esc(ui.calSearch)}"</span><button class="link" data-action="cal-search-clear">닫기</button></div>
+            ${hits.length ? hits.slice(0, 30).map((e) => `<button class="day-item" data-action="cal-goto" data-v="${esc(e.date)}">
+              <span class="pill2 ${ownerOf(e)}">${esc(ownerLabel(ownerOf(e)))}</span><span class="grow">${esc(e.title)}</span><span class="muted small">${fmt(parse(e.date))}</span></button>`).join("")
+              : `<div class="empty-hint">찾는 일정이 없어요</div>`}</div>`;
+        })() : "";
+
+        return `${search}
+          <h2 class="cal2-title">🗓️ 커플 캘린더</h2>
+          <div class="cal2-bar">
+            <button class="cal2-month" data-action="cal-month">${y}년 ${m + 1}월 <span aria-hidden="true">⌄</span></button>
+            <label class="toggle"><span>사진</span><input type="checkbox" id="calPhotoToggle" ${showPhotos ? "checked" : ""} /><i></i></label>
+          </div>
+          <div class="cal2-who">
+            ${[["p1", nameOf("p1")], ["p2", nameOf("p2")], ["both", "우리"]].map(([k, l]) =>
+              `<button class="who-chip ${k} ${who[k] ? "on" : ""}" data-action="cal-who" data-v="${k}" aria-pressed="${who[k]}">${esc(l)}</button>`).join("")}
+          </div>
+          <div class="cal2 card" id="cal2">
+            <div class="c2-week">${WD.map((w, i) => `<span class="${i === 0 ? "sun" : i === 6 ? "sat" : ""}">${w}</span>`).join("")}</div>
+            <div class="c2-grid">${cells}</div>
+          </div>
+          <div class="day-head">
+            <h3>${fmtLong(parse(sel))}</h3>
+            <div class="day-btns">
+              <button class="round-plus" data-action="cal-photo-add" aria-label="이 날 사진 추가">📷</button>
+              <button class="round-plus" data-action="event-new" aria-label="이 날 일정 추가">＋</button>
+            </div>
+          </div>
+          ${list.length ? `<div class="card day-list">${list.join("")}</div>` : `<p class="muted day-empty">이 날 일정이 없어요</p>`}
+          ${selPhotos.length ? `<div class="photo-grid day-photos">${selPhotos.map((p) =>
+            `<img src="${p.src}" data-action="view-photo" data-id="${esc(p.id)}" alt="${fmtW(parse(sel))} 사진" loading="lazy" />`).join("")}</div>` : ""}`;
       },
     },
 
@@ -1252,6 +1308,48 @@
     },
   };
 
+  // 일정의 주인: 나 / 상대 / 우리 (예전 일정은 쓴 사람 기준)
+  const ownerOf = (e) => (e.owner === "p1" || e.owner === "p2" || e.owner === "both" ? e.owner : e.by === "p2" ? "p2" : "p1");
+  // 날짜별 사진 (사진에 날짜가 없으면 올린 날)
+  function photosByDate() {
+    const out = {};
+    for (const p of state.photos) {
+      if (!safeImg(p.src)) continue;
+      const k = /^\d{4}-\d{2}-\d{2}$/.test(p.date || "") ? p.date : ymd(new Date(p.at || Date.now()));
+      (out[k] = out[k] || []).push(p);
+    }
+    return out;
+  }
+
+  function eventForm(ev, date) {
+    const owners = [{ value: role(), label: nameOf(role()) }, { value: other(), label: nameOf(other()) }, { value: "both", label: "우리" }];
+    openForm({
+      title: ev ? "일정 수정" : `${fmtW(parse(date))} 일정`,
+      fields: [
+        { name: "owner", label: "누구 일정인가요?", type: "seg", value: ev ? ownerOf(ev) : "both", options: owners },
+        { name: "title", label: "일정", value: ev?.title, required: true, max: 40, placeholder: "예) 롯데월드 데이트" },
+        { name: "date", label: "날짜", type: "date", value: ev ? ev.date : date, required: true },
+        { name: "time", label: "시간 (선택)", type: "time", value: ev?.time || "" },
+        { name: "memo", label: "메모 (선택)", value: ev?.memo, max: 60, placeholder: "예) 강남역 2번 출구" },
+      ],
+      async onSubmit(v) {
+        const data = { owner: v.owner || "both", title: v.title, date: v.date, time: v.time || "", memo: v.memo || "" };
+        if (ev) await store.update("events", ev.id, data);
+        else await store.add("events", { id: uid(), ...data });
+        ui.selDate = v.date;
+        const d = parse(v.date);
+        ui.calMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+        renderPage();
+      },
+    });
+    if (ev) {
+      const del = document.createElement("button");
+      del.type = "button"; del.className = "btn danger full"; del.textContent = "이 일정 삭제"; del.style.marginTop = "10px";
+      del.onclick = async () => { closeForm(); if (await ask("이 일정을 지울까요?", "삭제")) store.remove("events", ev.id); };
+      $("#modalFields").appendChild(del);
+    }
+  }
+
   function recordsPage(group, cats) {
     const cur = ui.recCat[group] || "all";
     const list = state.records.filter((r) => cats.some((c) => c.id === r.cat) && (cur === "all" || r.cat === cur));
@@ -1369,7 +1467,7 @@
     }
   }
 
-  async function addPhotos(capture) {
+  async function addPhotos(capture, extra = {}) {
     const files = await pickImages({ multiple: !capture, capture });
     if (!files.length) return;
     if (shared()) toast("사진을 올리는 중…");
@@ -1377,7 +1475,7 @@
       try {
         // 공유 모드: 문서 1개당 1MB 제한이 있어 조금 더 작게 저장
         const src = await resizeImage(f, shared() ? 960 : 1080);
-        await store.add("photos", { id: uid(), src });
+        await store.add("photos", { id: uid(), src, date: todayStr(), ...extra });
       } catch { /* 읽을 수 없는 파일은 건너뜀 */ }
     }
   }
@@ -1435,21 +1533,43 @@
     "rec-edit": (el) => recordForm(el.dataset.group, state.records.find((r) => r.id === el.dataset.id)),
     "rec-cat": (el) => { ui.recCat[el.dataset.group] = el.dataset.v; renderPage(); },
 
-    "event-new": () => openForm({
-      title: `${fmtW(parse(ui.selDate || todayStr()))} 일정`,
-      fields: [
-        { name: "title", label: "일정", required: true, max: 40, placeholder: "예) 롯데월드 데이트" },
-        { name: "date", label: "날짜", type: "date", value: ui.selDate || todayStr(), required: true },
-      ],
-      onSubmit: (v) => store.add("events", { id: uid(), date: v.date, title: v.title }),
-    }),
+    "event-new": () => eventForm(null, ui.selDate || todayStr()),
+    "event-edit": (el) => { const ev = state.events.find((x) => x.id === el.dataset.id); if (ev) eventForm(ev); },
     "cal-sel": (el) => {
       ui.selDate = el.dataset.v;
       const d = parse(ui.selDate);
-      if (d.getMonth() !== ui.calMonth.getMonth()) ui.calMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+      if (d.getMonth() !== ui.calMonth.getMonth() || d.getFullYear() !== ui.calMonth.getFullYear()) ui.calMonth = new Date(d.getFullYear(), d.getMonth(), 1);
       renderPage();
     },
     "cal-move": (el) => { ui.calMonth = new Date(ui.calMonth.getFullYear(), ui.calMonth.getMonth() + +el.dataset.v, 1); renderPage(); },
+    "cal-month": () => openForm({
+      title: "달 선택",
+      fields: [{ name: "month", label: "몇 년 몇 월로 갈까요?", type: "month", value: `${ui.calMonth.getFullYear()}-${pad(ui.calMonth.getMonth() + 1)}`, required: true }],
+      okText: "이동",
+      onSubmit: (v) => {
+        const [yy, mm] = (v.month || "").split("-").map(Number);
+        if (yy && mm) { ui.calMonth = new Date(yy, mm - 1, 1); renderPage(); }
+      },
+    }),
+    "cal-who": (el) => {
+      const k = el.dataset.v;
+      ui.calWho[k] = !ui.calWho[k];
+      if (!ui.calWho.p1 && !ui.calWho.p2 && !ui.calWho.both) ui.calWho[k] = true; // 하나는 켜두기
+      renderPage();
+    },
+    "cal-photo-add": () => addPhotos(false, { date: ui.selDate || todayStr() }),
+    "cal-search": () => openForm({
+      title: "일정 검색",
+      fields: [{ name: "q", label: "찾을 말", required: true, max: 30, placeholder: "예) 여행, 생일", value: ui.calSearch || "" }],
+      okText: "검색",
+      onSubmit: (v) => { ui.calSearch = v.q; renderPage(true); },
+    }),
+    "cal-search-clear": () => { ui.calSearch = ""; renderPage(); },
+    "cal-goto": (el) => {
+      const d = parse(el.dataset.v);
+      ui.selDate = el.dataset.v; ui.calMonth = new Date(d.getFullYear(), d.getMonth(), 1); ui.calSearch = "";
+      renderPage(true);
+    },
 
     "bucket-new": () => openForm({
       title: "버킷리스트 추가",
@@ -1490,7 +1610,7 @@
       const p = state.photos.find((x) => x.id === el.dataset.id); if (!p) return;
       viewing = p.id;
       $("#viewerImg").src = safeImg(p.src);
-      $("#viewerCap").textContent = `${nameOf(p.by)} · ${fmt(new Date(p.at))}${p.place ? ` · ${placeName(p.place)}` : ""}`;
+      $("#viewerCap").textContent = `${nameOf(p.by)} · ${p.date ? fmt(parse(p.date)) : fmt(new Date(p.at))}${p.place ? ` · ${placeName(p.place)}` : ""}`;
       $("#viewer").classList.remove("hidden");
     },
 
@@ -1756,6 +1876,27 @@
       dayOne: f.get("dayOne") === "on",
     });
     toast("저장했어요.");
+  });
+  // 캘린더를 옆으로 밀면 이전/다음 달
+  let calSwipe = null;
+  $("#pageBody").addEventListener("touchstart", (e) => {
+    if (!e.target.closest("#cal2") || e.touches.length !== 1) return;
+    calSwipe = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, { passive: true });
+  $("#pageBody").addEventListener("touchend", (e) => {
+    if (!calSwipe) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - calSwipe.x, dy = t.clientY - calSwipe.y;
+    calSwipe = null;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5 && ui.calMonth) {
+      ui.calMonth = new Date(ui.calMonth.getFullYear(), ui.calMonth.getMonth() + (dx < 0 ? 1 : -1), 1);
+      renderPage();
+    }
+  }, { passive: true });
+
+  document.addEventListener("change", (e) => {
+    if (e.target.id !== "calPhotoToggle") return;
+    local.calPhotos = e.target.checked; saveLocal(); renderPage();
   });
   document.addEventListener("input", (e) => {
     if (e.target.id === "glassAlpha") {
