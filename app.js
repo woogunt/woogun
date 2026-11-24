@@ -298,6 +298,7 @@
     setBadge("연결 중…", true);
     let s;
     try { s = await sync(); } catch (e) { console.error(e); setBadge("오프라인", true); return; }
+    if (!session.artifact && s.remember) s.remember(session.roomId, session.role);
     unsubscribe = s.subscribe(session.roomId, {
       onRoom(room) {
         state.profile = room.profile;
@@ -791,9 +792,9 @@
           <div class="muted small" style="margin-top:6px">공유 → 이메일로 <b>편집자</b> 초대 → 상대가 이 링크를 열면 끝! (눌러서 자세히)</div></section>`
       : shared() && memberCount < 2 && session.code
       ? `<section class="widget glass" data-open="settings" style="text-align:center">
-          <div class="muted small">상대에게 이 초대 코드를 보내주세요</div>
-          <div class="invite-code">${esc(session.code)}</div>
-          <button class="btn ghost" data-action="copy-code">코드 복사</button></section>`
+          <div class="muted small">${esc(nameOf(other()))}님을 초대해주세요</div>
+          <button class="btn kakao" data-action="share-invite" style="margin:10px 0 6px">💬 카카오톡으로 초대 링크 보내기</button>
+          <div class="muted small">또는 초대 코드 <b class="code-inline">${esc(session.code)}</b> <button class="link" data-action="copy-code">복사</button></div></section>`
       : "";
     $("#widgets").innerHTML = invite + (local.widgets.map((k) => widgetHTML(k)).join("")
       || `<div class="widget glass" data-action="gallery"><div class="empty-hint">홈 화면이 비어 있어요. ＋를 눌러 블럭을 추가해보세요.</div></div>`);
@@ -1226,10 +1227,14 @@
               : waiting
                 ? (session.code ? "상대가 아래 코드를 입력하면 연결돼요. (7일간 유효)" : "상대를 기다리고 있어요. 코드를 잃어버렸다면 새 초대 코드를 만드세요.")
                 : `${esc(nameOf(other()))}님과 실시간으로 공유 중이에요.`}</p>
-            ${waiting && session.code ? `<div class="invite-code" id="inviteCode">${esc(session.code)}</div><button class="btn" data-action="copy-code">코드 복사</button>` : ""}
-            ${!on ? `<button class="btn primary" data-action="share-start">공유 시작하기 (초대 코드 만들기)</button>` : `
-              <button class="btn" data-action="share-reset">상대 기기 다시 연결 (새 초대 코드)</button>
-              <button class="btn danger" data-action="share-leave">이 기기에서 연결 끊기</button>`}
+            ${waiting && session.code ? `<button class="btn kakao" data-action="share-invite">💬 카카오톡으로 초대 링크 보내기</button>
+              <div class="muted small" style="text-align:center">초대 코드 <b class="code-inline">${esc(session.code)}</b> <button class="link" data-action="copy-code">복사</button></div>` : ""}
+            ${waiting && !session.code ? `<button class="btn kakao" data-action="new-invite">💬 새 초대 링크 만들기</button>` : ""}
+            ${!on ? `<button class="btn google-btn" data-action="share-start">${GOOGLE_G} 구글로 로그인하고 공유 시작</button>
+              <button class="link" data-action="share-start" data-anon="1">로그인 없이 공유 시작</button>` : `
+              ${accountRowHTML()}
+              <button class="btn" data-action="share-reset">상대 다시 연결 (상대를 내보내고 새 초대)</button>
+              <button class="btn danger" data-action="share-leave">이 기기에서 로그아웃</button>`}
           </div>` : ""}
           ${on && session.artifact ? "" : `<div class="card stack">
             <button class="btn" data-action="export">데이터 내보내기 (JSON)</button>
@@ -1501,21 +1506,59 @@
       if (!session?.code) return;
       navigator.clipboard?.writeText(session.code).then(() => toast("초대 코드를 복사했어요"), () => toast(session.code));
     },
+    // 폰의 공유 창(카카오톡 등)으로 초대 링크 보내기. 공유 창이 없으면 링크를 복사
+    "share-invite": async () => {
+      if (!session?.code) return;
+      const url = inviteURL(session.code);
+      const text = `${nameOf(role())}님이 '우리둘'에 초대했어요 💕\n링크를 눌러 참여해 주세요. (7일 동안 쓸 수 있어요)`;
+      if (navigator.share) {
+        try { await navigator.share({ title: "우리둘 초대", text, url }); return; }
+        catch (e) { if (e && e.name === "AbortError") return; }
+      }
+      try {
+        await navigator.clipboard.writeText(`${text}\n${url}`);
+        toast("초대 링크를 복사했어요. 카카오톡 대화방에 붙여넣어 보내주세요");
+      } catch {
+        await ask(`이 링크를 복사해서 카카오톡으로 보내주세요\n\n${url}`, "확인");
+      }
+    },
+    "new-invite": async () => {
+      try {
+        const s = await sync();
+        session.code = await s.newInvite(session.roomId, role());
+        saveSession(); render();
+        ACTIONS["share-invite"]();
+      } catch (err) { console.error(err); toast("초대를 만들지 못했어요. 인터넷 연결을 확인해주세요."); }
+    },
+    "link-google": async (el) => {
+      el.disabled = true;
+      try {
+        const s = await sync();
+        await s.linkGoogle();
+        if (session && !session.artifact) await s.remember(session.roomId, session.role);
+        toast("구글 계정을 연결했어요. 이제 폰을 바꿔도 로그인만 하면 돼요");
+        render();
+      } catch (err) { el.disabled = false; toast(err.friendly ? err.message : "구글 계정 연결에 실패했어요."); }
+    },
     "share-start": async (el) => {
       el.disabled = true;
       try {
         const s = await sync();
+        if (!s.currentUser()) {
+          if (el.dataset.anon) await s.signInAnon();
+          else await s.signInGoogle();
+        }
         session = await s.createRoom(state.profile, state);
         saveSession(); save(); memberCount = 1;
         connect(); render();
         toast("초대 코드가 만들어졌어요!");
       } catch (err) {
         console.error(err); el.disabled = false;
-        toast("연결에 실패했어요. 인터넷 연결을 확인해주세요.");
+        toast(err.friendly ? err.message : "연결에 실패했어요. 인터넷 연결을 확인해주세요.");
       }
     },
     "share-reset": async () => {
-      if (!(await ask("상대 기기의 연결을 끊고 새 초대 코드를 만들까요?\n(상대가 폰을 바꿨거나 앱 데이터를 지웠을 때 사용해요)", "새 코드 만들기"))) return;
+      if (!(await ask("상대의 연결을 끊고 새 초대 링크를 만들까요?\n(상대가 로그인 없이 쓰다가 폰을 바꿨을 때 사용해요. 구글로 로그인한 상대는 다시 로그인만 하면 돼서 필요 없어요)", "새 초대 만들기"))) return;
       try {
         const s = await sync();
         session.code = await s.resetInvite(session.roomId, role());
@@ -1524,6 +1567,7 @@
     },
     "share-leave": async () => {
       if (!(await ask("이 기기에서 연결을 끊을까요?\n데이터는 상대 기기와 서버에 그대로 남아요. 다시 연결하려면 상대에게 새 초대 코드를 받아야 해요.", "연결 끊기"))) return;
+      try { if (!session?.artifact) await (await sync()).signOut(); } catch { /* 오프라인 */ }
       disconnectLocal();
     },
     export: () => {
@@ -1800,6 +1844,102 @@
     renderPage(false);
   }
 
+  // ---- 초대 링크 (?invite=코드) ----
+  const inviteURL = (code) => `${location.origin}${location.pathname}?invite=${encodeURIComponent(code)}`;
+  function pendingInvite() {
+    try {
+      const c = new URLSearchParams(location.search).get("invite");
+      return c && /^[A-Za-z0-9]{6}$/.test(c) ? c.toUpperCase() : null;
+    } catch { return null; }
+  }
+  function clearInvite() {
+    try { if (location.search) history.replaceState(null, "", location.pathname + location.hash); } catch { /* 무시 */ }
+  }
+  const IN_KAKAO = /KAKAOTALK/i.test(navigator.userAgent || "");
+
+  const GOOGLE_G = `<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 2.9-2.2 5.4-4.7 7.1l7.6 5.9c4.4-4.1 6.9-10.1 6.9-17.5z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>`;
+
+  function accountRowHTML() {
+    const u = syncMod && syncMod.currentUser ? syncMod.currentUser() : null;
+    if (u && !u.isAnonymous) return `<div class="account-row">${GOOGLE_G}<span class="grow">구글 계정으로 로그인됨<div class="muted small">${esc(u.email)}</div></span></div>`;
+    return `<div class="account-row"><span class="grow">로그인 없이 사용 중<div class="muted small">폰을 바꾸면 다시 초대를 받아야 해요. 구글 계정을 연결해 두면 로그인만 하면 돼요.</div></span></div>
+      <button class="btn google-btn" data-action="link-google">${GOOGLE_G} 구글 계정 연결하기</button>`;
+  }
+
+  function setupStage(stage) {
+    // stage: "auth" 로그인 고르기 / "form" 새로 만들기·코드 입력 / "busy" 확인 중
+    $("#authBox").classList.toggle("hidden", stage !== "auth");
+    $("#setupForm").classList.toggle("hidden", stage !== "form");
+    $("#joinBox").classList.toggle("hidden", stage !== "form");
+    $("#setupLead").textContent = stage === "auth" && pendingInvite()
+      ? "둘만의 공간에 초대받았어요 💌 로그인하면 바로 연결돼요."
+      : stage === "form" && !pendingInvite() ? "우리만의 공간을 만들어볼까요?" : $("#setupLead").dataset.def;
+    $("#kakaoNote").classList.toggle("hidden", !(stage === "auth" && IN_KAKAO));
+  }
+
+  // Firebase 모드 첫 화면: 로그인 → 내 공간 찾기 → (초대 링크면) 바로 참여 → 아니면 새로 만들기
+  async function firebaseStart() {
+    setupStage("busy");
+    $("#setupMsg").textContent = "불러오는 중…";
+    let s;
+    try { s = await sync(); } catch (e) { console.error(e); setupStage("form"); $("#setupMsg").textContent = "서버에 연결하지 못했어요. 인터넷 연결을 확인해주세요."; return; }
+    if (!s.currentUser()) { $("#setupMsg").textContent = ""; setupStage("auth"); return; }
+    await afterSignIn();
+  }
+
+  async function afterSignIn() {
+    const s = await sync();
+    setupStage("busy");
+    $("#setupMsg").textContent = "내 공간을 찾는 중…";
+    const mine = await s.myRoom();
+    if (mine) { clearInvite(); return enterFirebase(mine); }
+    const code = pendingInvite();
+    if (code) {
+      $("#setupMsg").textContent = "초대받은 공간에 연결하는 중…";
+      try {
+        const r = await s.joinRoom(code);
+        clearInvite();
+        toast("연결됐어요! 💕");
+        return enterFirebase(r);
+      } catch (err) {
+        setupStage("form");
+        $("#joinForm").code.value = code;
+        $("#setupMsg").textContent = err.friendly ? err.message : "연결에 실패했어요.";
+        return;
+      }
+    }
+    $("#setupMsg").textContent = "";
+    setupStage("form");
+  }
+
+  function enterFirebase(r) {
+    session = { roomId: r.roomId, role: r.role, ...(r.code ? { code: r.code } : {}) };
+    saveSession();
+    state = defaults();
+    state.profile = { p1: "", p2: "", start: todayStr(), dayOne: true }; // 구독으로 곧 채워짐
+    save(); boot();
+  }
+
+  $("#googleBtn").addEventListener("click", async () => {
+    if (IN_KAKAO) { toast("카카오톡 안에서는 구글 로그인이 안 돼요. '다른 브라우저로 열기'를 눌러주세요"); return; }
+    $("#googleBtn").disabled = true;
+    try {
+      const s = await sync();
+      await s.signInGoogle();
+      await afterSignIn();
+    } catch (err) {
+      $("#setupMsg").textContent = err.friendly ? err.message : "구글 로그인에 실패했어요.";
+    } finally { $("#googleBtn").disabled = false; }
+  });
+  $("#anonBtn").addEventListener("click", async () => {
+    try { await (await sync()).signInAnon(); await afterSignIn(); }
+    catch (err) { console.error(err); $("#setupMsg").textContent = "연결에 실패했어요. 인터넷 연결을 확인해주세요."; }
+  });
+  $("#openExternal").addEventListener("click", () => {
+    // 카카오톡 인앱 브라우저 → 폰 기본 브라우저로 열기
+    location.href = "kakaotalk://web/openExternal?url=" + encodeURIComponent(location.href);
+  });
+
   function boot() {
     applyBg();
     const ready = !!state.profile;
@@ -1809,13 +1949,17 @@
     $("#setup").classList.toggle("hidden", ready);
     $("#app").classList.toggle("hidden", !ready);
     $("#joinBox").classList.toggle("hidden", !SHARE_ENABLED || !!artifactBackend);
+    $("#authBox").classList.add("hidden");
+    $("#kakaoNote").classList.add("hidden");
     $("#setupMsg").textContent = "";
     setBadge(null);
     if (ready) {
       if (shared()) connect();
+      if (pendingInvite()) clearInvite(); // 이미 연결된 기기에서 초대 링크를 연 경우
       render();
     } else {
       $("#setupForm").start.value = todayStr();
+      if (SHARE_ENABLED && !artifactBackend) firebaseStart(); // 구글 로그인 / 초대 링크
     }
   }
 

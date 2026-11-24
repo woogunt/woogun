@@ -34,31 +34,64 @@ claude.ai 아티팩트로 열면 링크 하나가 둘만의 공간이 돼요. �
 
 배경화면·블럭 배치는 각자 기기에만 적용돼요.
 
-## 둘이 같이 쓰기 — 방법 2: Firebase로 직접 배포 (단독 앱 주소)
+## 둘이 같이 쓰기 — 방법 2: 우리만의 주소 + 카카오톡 초대 링크 + 구글 로그인 (추천)
 
+Firebase(구글이 만든 무료 서비스)로 `https://<프로젝트이름>.web.app` 같은 **우리만의 주소**를 만들어요.
+처음 한 번만 PC에서 설정하면 돼요. (30분 정도)
 
-1. https://console.firebase.google.com 에서 **프로젝트 만들기**
-2. **빌드 → Authentication → 시작하기 → 로그인 방법 → 익명** 사용 설정
-3. **빌드 → Firestore Database → 데이터베이스 만들기** (위치: `asia-northeast3 (서울)`, 프로덕션 모드)
-4. **프로젝트 설정(⚙) → 내 앱 → 웹 앱(</>) 추가** → 나오는 `firebaseConfig` 값을 `firebase-config.js`에 붙여넣기
+### 1단계. Firebase 프로젝트 만들기 (PC 브라우저)
+1. https://console.firebase.google.com 접속 → 구글 계정으로 로그인
+2. **프로젝트 만들기** → 이름 입력 (예: `uridul-woogun`, 이게 주소가 돼요) → Google 애널리틱스는 꺼도 됨 → 만들기
+
+### 2단계. 로그인 방법 켜기
+1. 왼쪽 메뉴 **빌드 → Authentication → 시작하기**
+2. **로그인 방법(Sign-in method)** 탭에서
+   - **Google** → 사용 설정 → 프로젝트 지원 이메일 선택 → 저장
+   - **익명(Anonymous)** → 사용 설정 → 저장 ("로그인 없이 시작하기"용)
+
+### 3단계. 데이터베이스 만들기
+1. 왼쪽 메뉴 **빌드 → Firestore Database → 데이터베이스 만들기**
+2. 위치: **asia-northeast3 (서울)** → **프로덕션 모드**로 시작 → 만들기
+
+### 4단계. 웹 앱 등록하고 설정값 붙여넣기
+1. 왼쪽 위 ⚙ **프로젝트 설정** → 아래쪽 **내 앱** → **웹(</>)** 아이콘 → 앱 이름 입력 → 등록 (Hosting 체크는 안 해도 됨)
+2. 나오는 `firebaseConfig = { ... }` 값을 이 저장소의 `firebase-config.js`에 붙여넣기
    ```js
-   window.FIREBASE_CONFIG = { apiKey: "...", authDomain: "...", projectId: "...", appId: "..." };
+   window.FIREBASE_CONFIG = {
+     apiKey: "AIza...",
+     authDomain: "uridul-woogun.web.app",   // ← 주의: firebaseapp.com 대신 web.app 으로 바꾸기
+     projectId: "uridul-woogun",
+     storageBucket: "uridul-woogun.appspot.com",
+     messagingSenderId: "...",
+     appId: "...",
+   };
    ```
-5. 보안 규칙 적용 + 배포 (PC에 Node.js 필요)
-   ```bash
-   npm i -g firebase-tools
-   firebase login
-   firebase use --add          # 만든 프로젝트 선택
-   firebase deploy             # firestore.rules + 웹앱 호스팅 배포
-   ```
-   배포가 끝나면 나오는 `https://<프로젝트>.web.app` 주소를 둘 다 폰에서 열고, **공유 → 홈 화면에 추가**하면 앱처럼 쓸 수 있어요.
+   > `authDomain`을 **`<프로젝트>.web.app`** 으로 바꿔야 아이폰 사파리/홈 화면 앱에서 구글 로그인이 잘 돼요.
+
+### 5단계. 배포 (PC에 Node.js 필요: https://nodejs.org 에서 LTS 설치)
+이 저장소 폴더에서 터미널을 열고:
+```bash
+npm i -g firebase-tools     # 처음 한 번
+firebase login              # 브라우저가 열리면 같은 구글 계정으로 로그인
+firebase use --add          # 1단계에서 만든 프로젝트 선택, 별칭은 default
+firebase deploy             # 보안 규칙(firestore.rules) + 웹앱 배포
+```
+끝나면 `Hosting URL: https://uridul-woogun.web.app` 이 나와요. 이게 **우리만의 주소**예요.
+
+### 사용 방법
+1. **내 폰**에서 주소 열기 → **Google로 시작하기** → 이름/처음 만난 날 입력 → 새로 시작하기
+2. 홈 맨 위 **💬 카카오톡으로 초대 링크 보내기** → 폰 공유 창에서 **카카오톡** → 상대에게 전송
+   (공유 창이 안 뜨는 기기는 링크가 복사돼요 → 카톡 대화방에 붙여넣기)
+3. **상대**가 카톡에서 링크를 누름 → 카톡 안 브라우저로 열리면 **다른 브라우저로 열기**
+   → **Google로 시작하기** → 자동으로 연결 끝 💕
+4. 둘 다 사파리/크롬 메뉴에서 **홈 화면에 추가** → 앱처럼 사용
+5. **폰을 바꾸면?** 새 폰에서 주소 열고 같은 구글 계정으로 로그인만 하면 그대로 이어져요.
+
+- 초대 링크는 **7일 동안 한 번** 쓸 수 있어요. 만료되면 설정 → 실시간 공유에서 새 초대 링크를 만들 수 있어요.
+- "로그인 없이 시작하기"로 쓰다가도 설정에서 **구글 계정 연결하기**를 누르면 기록 그대로 구글 계정에 묶여요.
+- 카카오톡 안에서 열린 화면(인앱 브라우저)에서는 구글이 로그인을 막아요. 그래서 "다른 브라우저로 열기" 버튼이 나와요.
 
 > `firebase-config.js`의 값은 공개돼도 괜찮은 클라이언트 설정이에요. 데이터 보호는 `firestore.rules`가 담당합니다 (연결된 두 사람만 읽기/쓰기 가능).
-
-## 사용 방법
-1. 한 사람이 **새로 시작하기** → 홈 화면에 6자리 **초대 코드**가 나옴
-2. 상대는 시작 화면의 **초대 코드로 연결하기**에 코드 입력 → 연결 완료
-3. 상대가 폰을 바꾸면: 설정 → **상대 기기 다시 연결** → 새 코드를 상대에게 전달
 
 `firebase-config.js`가 `null`이면 공유 없이 이 기기에만 저장하는 모드로 동작합니다 (`index.html`을 바로 열어도 됨).
 

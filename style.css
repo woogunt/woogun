@@ -403,3 +403,11 @@ body.reordering { cursor: grabbing; }
 .steps { margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: 14px; line-height: 1.55; }
 #artifactJoin { margin-top: 18px; text-align: center; }
 #artifactJoin p { margin: 0 0 8px; line-height: 1.6; }
+
+/* 구글 로그인 / 카카오톡 초대 */
+.google-btn { background: #fff; color: #1f1f1f; border: 1px solid #dadce0; gap: 10px; }
+.btn.kakao { background: #fee500; color: #191919; }
+.code-inline { letter-spacing: 2px; }
+.kakao-note { background: #fff8c4; border-radius: 16px; padding: 14px; font-size: 13px; line-height: 1.6; display: grid; gap: 10px; text-align: center; }
+.account-row { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; }
+#authBox { margin-top: 20px; }
