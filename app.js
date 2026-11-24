@@ -24,6 +24,7 @@
   ];
   const EXP_CATS = ["식비", "카페", "문화", "교통", "숙소", "쇼핑", "선물", "기타"];
   const DEFAULT_WIDGETS = ["dday", "calendar", "diary", "album"];
+  const DEFAULT_TITLE = "우리둘"; // 이름을 정하지 않았을 때
 
   // =========================================================
   // 저장소
@@ -830,7 +831,7 @@
   let lumImg = null;
   function buildLumGrid() {
     const src = safeImg(local.bg);
-    if (!src) { lumGrid = null; lumImg = null; updateTones(); return; }
+    if (!src) { lumGrid = null; lumImg = null; document.documentElement.style.backgroundColor = ""; updateTones(); return; }
     const draw = (img) => {
       const c = document.createElement("canvas"); c.width = GRID_W; c.height = GRID_H;
       const g = c.getContext("2d");
@@ -842,6 +843,10 @@
       const d = g.getImageData(0, 0, GRID_W, GRID_H).data;
       lumGrid = new Float32Array(GRID_W * GRID_H);
       for (let i = 0; i < lumGrid.length; i++) lumGrid[i] = (0.2126 * d[i * 4] + 0.7152 * d[i * 4 + 1] + 0.0722 * d[i * 4 + 2]) / 255;
+      // 화면 맨 아래(사파리 주소창 뒤)가 사진 아래쪽과 같은 색이 되도록
+      let r = 0, g2 = 0, b = 0, n = 0;
+      for (let y = GRID_H - 3; y < GRID_H; y++) for (let x = 0; x < GRID_W; x++) { const k = (y * GRID_W + x) * 4; r += d[k]; g2 += d[k + 1]; b += d[k + 2]; n++; }
+      document.documentElement.style.backgroundColor = `rgb(${Math.round(r / n)}, ${Math.round(g2 / n)}, ${Math.round(b / n)})`;
       updateTones();
     };
     if (lumImg && lumImg.src === src && lumImg.complete) return draw(lumImg);
@@ -1206,6 +1211,7 @@
           </div>
           <div class="card"><h3>우리 정보</h3>
             <form id="profileForm" class="stack">
+              <label>우리 공간 이름<input name="title" maxlength="16" value="${esc(p.title || "")}" placeholder="${esc(DEFAULT_TITLE)}" /></label>
               <label>나의 이름<input name="me" required maxlength="12" value="${esc(p[role()])}" /></label>
               <label>상대 이름<input name="you" required maxlength="12" value="${esc(p[other()])}" /></label>
               <label>처음 만난 날<input name="start" type="date" required value="${esc(p.start)}" /></label>
@@ -1510,9 +1516,9 @@
     "share-invite": async () => {
       if (!session?.code) return;
       const url = inviteURL(session.code);
-      const text = `${nameOf(role())}님이 '우리둘'에 초대했어요 💕\n링크를 눌러 참여해 주세요. (7일 동안 쓸 수 있어요)`;
+      const text = `${nameOf(role())}님이 '${appTitle()}'에 초대했어요 💕\n링크를 눌러 참여해 주세요. (7일 동안 쓸 수 있어요)`;
       if (navigator.share) {
-        try { await navigator.share({ title: "우리둘 초대", text, url }); return; }
+        try { await navigator.share({ title: `${appTitle()} 초대`, text, url }); return; }
         catch (e) { if (e && e.name === "AbortError") return; }
       }
       try {
@@ -1743,6 +1749,7 @@
     const f = new FormData(e.target);
     document.activeElement?.blur();
     await store.setProfile({
+      title: (f.get("title") || "").trim(),
       [role()]: f.get("me").trim(),
       [other()]: f.get("you").trim(),
       start: f.get("start"),
@@ -1784,7 +1791,7 @@
   $("#setupForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = new FormData(e.target);
-    const profile = { p1: f.get("me").trim(), p2: f.get("you").trim(), start: f.get("start"), dayOne: true };
+    const profile = { title: (f.get("title") || "").trim(), p1: f.get("me").trim(), p2: f.get("you").trim(), start: f.get("start"), dayOne: true };
     if (artifactBackend) {
       busy(e.target, true);
       $("#setupMsg").textContent = "우리 공간을 만드는 중…";
@@ -1839,13 +1846,15 @@
   // 렌더 / 부팅
   // =========================================================
   function render() {
+    applyTitle();
     if (!state.profile) return;
     renderHome();
     renderPage(false);
   }
 
   // ---- 초대 링크 (?invite=코드) ----
-  const inviteURL = (code) => `${location.origin}${location.pathname}?invite=${encodeURIComponent(code)}`;
+  const inviteURL = (code) => `${location.origin}${location.pathname}?invite=${encodeURIComponent(code)}` +
+    (state.profile && state.profile.title ? `&n=${encodeURIComponent(state.profile.title)}` : "");
   function pendingInvite() {
     try {
       const c = new URLSearchParams(location.search).get("invite");
@@ -1940,7 +1949,38 @@
     location.href = "kakaotalk://web/openExternal?url=" + encodeURIComponent(location.href);
   });
 
+  // ---- 앱 이름 (처음 만들 때 정하고, 설정에서 바꿀 수 있음) ----
+  function invitedTitle() {
+    try { const n = new URLSearchParams(location.search).get("n"); return n ? n.slice(0, 16) : ""; } catch { return ""; }
+  }
+  function appTitle() {
+    return (state.profile && state.profile.title) || local.title || invitedTitle() || DEFAULT_TITLE;
+  }
+  let manifestURL = null;
+  function applyTitle() {
+    const t = appTitle();
+    if (state.profile && state.profile.title !== undefined && local.title !== state.profile.title) {
+      local.title = state.profile.title; saveLocal(); // 다음에 열 때 로그인 화면에도 이 이름이 보이도록
+    }
+    if (document.title === t) return;
+    document.title = t;
+    $("#appName").textContent = t;
+    const apple = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+    if (apple) apple.setAttribute("content", t);
+    // 홈 화면에 추가할 때 이름 (안드로이드 크롬)
+    try {
+      const link = document.querySelector('link[rel="manifest"]');
+      if (link && location.protocol.startsWith("http")) {
+        const m = { name: t, short_name: t.slice(0, 12), start_url: location.origin + location.pathname, display: "standalone", background_color: "#dbe7f7", theme_color: "#7ea6e0", lang: "ko" };
+        if (manifestURL) URL.revokeObjectURL(manifestURL);
+        manifestURL = URL.createObjectURL(new Blob([JSON.stringify(m)], { type: "application/manifest+json" }));
+        link.setAttribute("href", manifestURL);
+      }
+    } catch { /* 지원 안 하는 브라우저 */ }
+  }
+
   function boot() {
+    applyTitle();
     applyBg();
     const ready = !!state.profile;
     $("#loading").classList.add("hidden");

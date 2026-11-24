@@ -15,7 +15,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 /* 끝까지 끌어도 튕기면서 흰 바탕이 보이지 않게 */
-html { background: #7ea6e0; overscroll-behavior: none; }
+html { background: #dbe7f7; overscroll-behavior: none; } /* 기본 배경의 아래쪽 색 (배경화면을 넣으면 그 사진 아래쪽 색으로 바뀜) */
 body {
   font-family: "Noto Sans KR", -apple-system, system-ui, sans-serif;
   color: var(--text);
@@ -31,7 +31,8 @@ button { font: inherit; color: inherit; }
 
 /* 배경 */
 .bg {
-  position: fixed; inset: 0; z-index: -1;
+  /* 사파리 하단 주소창(떠 있는 툴바) 밑까지 덮도록 가장 큰 화면 높이(lvh) + 여유 */
+  position: fixed; top: 0; left: 0; right: 0; height: 100vh; height: calc(100lvh + 120px); z-index: -1;
   background: linear-gradient(180deg, #7ea6e0 0%, #a9c8f0 45%, #dbe7f7 100%) center / cover no-repeat;
 }
 .bg.photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.18), rgba(0,0,0,0) 30%); }
@@ -201,7 +202,7 @@ label.row input { width: auto; margin: 0; }
 
 /* 전체 화면 페이지 */
 .page-sheet {
-  position: fixed; inset: 0; z-index: 20; isolation: isolate; overflow: hidden;
+  position: fixed; top: 0; left: 0; right: 0; height: 100vh; height: 100lvh; z-index: 20; isolation: isolate; overflow: hidden;
   display: flex; flex-direction: column; animation: sheet-in .28s ease-out;
   --page-overlay: rgba(255, 255, 255, 0.28);
   --page-fg: var(--text);
@@ -229,7 +230,7 @@ label.row input { width: auto; margin: 0; }
 #pageAction { min-width: 44px; display: flex; justify-content: flex-end; }
 .back-btn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,.6); background: rgba(255,255,255,.7); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font-size: 26px; cursor: pointer; line-height: 1; }
 .add-btn { border: none; background: var(--text); color: #fff; font-weight: 700; border-radius: 99px; padding: 10px 14px; cursor: pointer; font-size: 14px; }
-.page-body { flex: 1; overflow-y: auto; overscroll-behavior: contain;padding: 6px 16px calc(env(safe-area-inset-bottom) + 32px); -webkit-overflow-scrolling: touch; }
+.page-body { flex: 1; overflow-y: auto; overscroll-behavior: contain;padding: 6px 16px calc(env(safe-area-inset-bottom) + 100px); -webkit-overflow-scrolling: touch; }
 .page-body > * { max-width: 520px; margin-left: auto; margin-right: auto; }
 .card { background: rgba(255, 255, 255, 0.78); border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 28px; padding: 18px; margin-bottom: 14px; box-shadow: 0 6px 20px rgba(20, 30, 60, .08); min-width: 0; }
 .card h3 { font-size: 16px; margin-bottom: 10px; }

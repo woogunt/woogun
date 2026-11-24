@@ -7,8 +7,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>우리둘</title>
-  <meta property="og:title" content="우리둘 💕" />
-  <meta property="og:description" content="둘만의 공간에 초대받았어요. 링크를 눌러 참여해 주세요." />
+  <meta property="og:title" content="둘만의 공간에 초대받았어요 💕" />
+  <meta property="og:description" content="링크를 눌러 참여해 주세요." />
+  <meta name="apple-mobile-web-app-title" content="우리둘" />
   <meta property="og:type" content="website" />
   <link rel="manifest" href="manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -22,7 +23,7 @@
   <section id="setup" class="setup hidden">
     <div class="setup-card glass">
       <div class="logo">♥</div>
-      <h1>우리둘</h1>
+      <h1 id="appName">우리둘</h1>
       <p class="muted" id="setupLead" data-def="우리만의 공간을 만들어볼까요?">우리만의 공간을 만들어볼까요?</p>
       <div id="authBox" class="stack hidden">
         <div id="kakaoNote" class="kakao-note hidden">
@@ -34,6 +35,7 @@
         <button type="button" class="link" id="anonBtn">로그인 없이 시작하기</button>
       </div>
       <form id="setupForm" class="stack">
+        <label>우리 공간 이름<input name="title" maxlength="16" placeholder="예) 우건♥희정, 우리의 하루" /></label>
         <label>나의 이름<input name="me" required maxlength="12" placeholder="예) 우건" /></label>
         <label>상대 이름<input name="you" required maxlength="12" placeholder="예) 희정" /></label>
         <label>처음 만난 날<input name="start" type="date" required /></label>
