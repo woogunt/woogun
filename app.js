@@ -594,7 +594,7 @@
           <button class="btn ghost" data-action="copy-code">코드 복사</button></section>`
       : "";
     $("#widgets").innerHTML = invite + (local.widgets.map((k) => widgetHTML(k)).join("")
-      || `<div class="widget glass" data-action="gallery"><div class="empty-hint">홈 화면이 비어 있어요. 여기를 눌러 위젯을 추가해보세요.</div></div>`);
+      || `<div class="widget glass" data-action="gallery"><div class="empty-hint">홈 화면이 비어 있어요. ＋를 눌러 블럭을 추가해보세요.</div></div>`);
     $("#bellDot").classList.toggle("hidden", !notifications().some((n) => n.at > local.lastSeen));
   }
 
@@ -642,16 +642,17 @@
   const addBtn = (action, label = "＋ 추가", extra = "") => `<button class="add-btn" data-action="${action}" ${extra}>${label}</button>`;
 
   const PAGES = {
-    // ---- 위젯 갤러리 ----
+    // ---- 블럭 추가 (＋) ----
     gallery: {
-      title: "위젯 추가",
+      title: "블럭 추가",
       html() {
-        const rest = Object.keys(WIDGETS).filter((k) => !local.widgets.includes(k));
-        if (!rest.length) return `<div class="card"><div class="empty-hint">모든 위젯이 홈 화면에 있어요.</div></div>`;
-        return `<p class="muted small" style="margin:0 4px 14px">추가할 위젯을 누르면 홈 화면에 바로 생겨요.</p>
-          ${rest.map((k) => `<div class="gallery-item" data-action="w-add" data-k="${k}">
-            <div class="preview">${widgetHTML(k, { preview: true })}</div>
-            <div class="label">${WIDGETS[k].name}</div></div>`).join("")}`;
+        return `<p class="muted small" style="margin:0 4px 14px">블럭을 누르면 홈 화면에 추가되고 바로 열려요.</p>
+          ${Object.keys(WIDGETS).sort((x, y) => local.widgets.includes(x) - local.widgets.includes(y)).map((k) => {
+            const added = local.widgets.includes(k);
+            return `<div class="gallery-item" data-action="w-add" data-k="${k}">
+              <div class="preview">${widgetHTML(k, { preview: true })}</div>
+              <div class="label">${WIDGETS[k].name}${added ? ` <span class="pill">홈에 있음 · 열기</span>` : ""}</div></div>`;
+          }).join("")}`;
       },
     },
 
@@ -724,7 +725,7 @@
       title: "커플 일기장",
       action: () => addBtn("diary-new", "＋ 쓰기"),
       html() {
-        if (!state.diary.length) return `<div class="card"><div class="empty-hint">아직 일기가 없어요. 오늘 있었던 일을 남겨보세요!</div></div>`;
+        if (!state.diary.length) return `<div class="card empty-card"><div class="empty-hint">아직 일기가 없어요. 오늘 있었던 일을 남겨보세요!</div><button class="btn primary full" data-action="diary-new">✍️ 첫 일기 쓰기</button></div>`;
         return state.diary.map((d) => `<div class="card">
           ${safeImg(d.photo) ? `<img src="${d.photo}" alt="" style="width:100%;border-radius:18px;margin-bottom:12px;display:block" />` : ""}
           <div class="diary-meta"><span class="who-${d.by === "p2" ? "p2" : "p1"}">${esc(nameOf(d.by))}</span> · ${fmtLong(parse(d.date))}</div>
@@ -802,7 +803,7 @@
             `<div class="bar-row"><span>${esc(c)}</span><div class="bar"><i style="width:${(v / total) * 100}%"></i></div><span>${won(v)}</span></div>`).join("")}</div></div>` : ""}
           <div class="card"><h3>내역</h3><ul class="list">${list.map((x) => `<li data-action="exp-edit" data-id="${esc(x.id)}" style="cursor:pointer">
               <span class="grow">${esc(x.title)}<div class="muted small">${fmtW(parse(x.date))} · ${esc(x.cat)} · ${x.payer === "both" ? "같이" : esc(nameOf(x.payer))}</div></span>
-              <strong>${won(x.amount)}</strong></li>`).join("") || `<li class="empty">이 달의 지출이 없어요</li>`}</ul></div>`;
+              <strong>${won(x.amount)}</strong></li>`).join("") || `<li class="empty" style="flex-direction:column"><span>이 달의 지출이 없어요</span><button class="btn primary full" data-action="exp-new">💰 지출 기록하기</button></li>`}</ul></div>`;
       },
     },
 
@@ -829,12 +830,12 @@
       html() {
         const p = state.profile, on = shared(), waiting = on && memberCount < 2;
         const mine = local.widgets;
-        return `<div class="card"><h3>홈 위젯</h3>
+        return `<div class="card"><h3>홈 블럭</h3>
             <ul class="list my-widgets">${mine.map((k, i) => `<li><span class="grow">${WIDGETS[k].name}</span>
               <button class="icon-sq" data-action="w-up" data-k="${k}" ${i === 0 ? "disabled" : ""} aria-label="${WIDGETS[k].name} 위로">↑</button>
               <button class="icon-sq" data-action="w-down" data-k="${k}" ${i === mine.length - 1 ? "disabled" : ""} aria-label="${WIDGETS[k].name} 아래로">↓</button>
-              <button class="icon-sq" data-action="w-remove" data-k="${k}" aria-label="${WIDGETS[k].name} 빼기">✕</button></li>`).join("") || `<li class="empty">홈 화면에 위젯이 없어요</li>`}</ul>
-            ${mine.length < Object.keys(WIDGETS).length ? `<button class="btn primary full" style="margin-top:10px" data-action="gallery">＋ 위젯 추가하기</button>` : ""}
+              <button class="icon-sq" data-action="w-remove" data-k="${k}" aria-label="${WIDGETS[k].name} 빼기">✕</button></li>`).join("") || `<li class="empty">홈 화면에 블럭이 없어요</li>`}</ul>
+            ${mine.length < Object.keys(WIDGETS).length ? `<button class="btn primary full" style="margin-top:10px" data-action="gallery">＋ 블럭 추가하기</button>` : ""}
           </div>
           <div class="card"><h3>우리 정보</h3>
             <form id="profileForm" class="stack">
@@ -884,7 +885,7 @@
           ${r.memo ? `<div class="clamp">${esc(r.memo)}</div>` : ""}
           <div class="rec-actions"><button class="link" data-action="rec-edit" data-id="${esc(r.id)}" data-group="${group}">수정</button>
             <button class="link" data-action="del" data-coll="records" data-id="${esc(r.id)}" data-confirm="이 기록을 지울까요?">삭제</button></div>
-        </div></div>`).join("") : `<div class="card"><div class="empty-hint">아직 기록이 없어요. ＋ 기록을 눌러 추가해보세요.</div></div>`}`;
+        </div></div>`).join("") : `<div class="card empty-card"><div class="empty-hint">아직 기록이 없어요.</div><button class="btn primary full" data-action="rec-new" data-group="${group}">첫 기록 남기기</button></div>`}`;
   }
 
   // =========================================================
@@ -1012,13 +1013,16 @@
     open: (el) => openPage(el.dataset.page),
     gallery: () => openPage("gallery"),
     "open-settings": () => openPage("settings"),
+    // ＋에서 블럭 선택: 홈에 추가하고 바로 그 블럭을 연다 (이미 있으면 열기만)
     "w-add": (el) => {
       const k = el.dataset.k;
-      if (!local.widgets.includes(k)) local.widgets.push(k);
+      const isNew = !local.widgets.includes(k);
+      if (isNew) local.widgets.push(k);
       saveLocal(); closeAllPages(); render();
       const w = $(`#widgets [data-w="${k}"]`);
-      if (w) { w.scrollIntoView({ behavior: "smooth", block: "center" }); w.classList.add("flash"); }
-      toast(`${WIDGETS[k].name} 위젯을 추가했어요. 눌러서 사용해보세요!`);
+      if (w) { w.scrollIntoView({ block: "center" }); w.classList.add("flash"); }
+      if (WIDGETS[k].page) openPage(WIDGETS[k].page);
+      if (isNew) toast(`홈에 ${WIDGETS[k].name} 블럭을 추가했어요`);
     },
     "cal-open": (el) => {
       ui.selDate = el.dataset.v;
@@ -1026,7 +1030,6 @@
       ui.calMonth = new Date(d.getFullYear(), d.getMonth(), 1);
       openPage("calendar");
     },
-    "quick-event": () => { ui.selDate = todayStr(); ACTIONS["event-new"](); },
     "w-remove": (el) => { local.widgets = local.widgets.filter((k) => k !== el.dataset.k); saveLocal(); render(); },
     "w-up": (el) => moveWidget(el.dataset.k, -1),
     "w-down": (el) => moveWidget(el.dataset.k, 1),
@@ -1158,10 +1161,7 @@
     if (w) openPage(w.dataset.open);
   });
 
-  $("#addBtn").addEventListener("click", () => $("#quick").classList.remove("hidden"));
-  $("#quick").addEventListener("click", (e) => {
-    if (e.target.id === "quick" || e.target.closest("#quickClose") || e.target.closest("[data-action]")) $("#quick").classList.add("hidden");
-  });
+  $("#addBtn").addEventListener("click", () => openPage("gallery"));
   $("#gearBtn").addEventListener("click", () => openPage("settings"));
   $("#bellBtn").addEventListener("click", () => {
     openPage("notifications");
