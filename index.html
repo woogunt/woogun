@@ -196,6 +196,37 @@ select { font-family: inherit; font-size: 0.9rem; padding: 7px 8px; border: 1px 
 .sim-tips { margin: 0; padding-left: 18px; font-size: 0.85rem; display: flex; flex-direction: column; gap: 6px; }
 .sim-src { font-size: 0.75rem; color: var(--muted); display: flex; flex-direction: column; gap: 3px; }
 .sim-src a { color: var(--muted); }
+/* 시뮬레이터 v2: 계좌·배분 */
+.sim-sec { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; }
+.sim-sec-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.acc-list { display: flex; flex-direction: column; gap: 8px; }
+.acc { display: grid; grid-template-columns: 12px minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1.2fr) 30px; gap: 8px; align-items: center; }
+.acc select, .acc .field { min-width: 0; width: 100%; font-size: 16px; }
+.acc .num { text-align: right; font-family: var(--font-num); }
+@media (max-width: 460px) {
+  .acc { grid-template-columns: 12px minmax(0, 1fr) minmax(0, 1fr) 30px; padding-bottom: 8px; border-bottom: 1px dashed var(--line); }
+  .acc select { grid-column: 2 / 4; grid-row: 1; } .acc .del { grid-column: 4; grid-row: 1; }
+  .acc .field:not(.num) { grid-column: 2; grid-row: 2; } .acc .num { grid-column: 3; grid-row: 2; }
+}
+.sim-sens td:first-child { position: static; background: transparent; }
+.alloc-list { display: flex; flex-direction: column; gap: 12px; }
+.alloc { display: flex; flex-direction: column; gap: 2px; }
+.alloc-top { display: flex; justify-content: space-between; align-items: baseline; gap: 4px 10px; flex-wrap: wrap; font-size: 0.85rem; }
+.alloc-top small { color: var(--muted); font-size: 0.72rem; }
+.alloc-amt { font-family: var(--font-num); font-variant-numeric: tabular-nums; color: var(--muted); font-size: 0.82rem; }
+.alloc-amt b { color: var(--ink); }
+.alloc input[type="range"] { width: 100%; height: 30px; accent-color: var(--c); margin: 0; }
+.alloc-warn { font-size: 0.75rem; color: var(--warn); }
+.alloc-warn:empty { display: none; }
+.chk { display: flex; gap: 8px; align-items: flex-start; font-size: 0.82rem; color: var(--muted); }
+.chk input { margin-top: 3px; }
+.plan { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 12px; background: var(--soft); }
+.plan-top { display: flex; flex-direction: column; gap: 2px; }
+.plan-big { font-family: var(--font-num); font-size: 1.8rem; font-weight: 600; color: var(--accent); letter-spacing: -0.02em; }
+.plan-when { font-size: 0.85rem; color: var(--muted); }
+.plan .sim-sens small { color: var(--muted); }
+button.sim-card { background: var(--surface); color: var(--ink); font: inherit; text-align: left; cursor: pointer; width: 100%; }
+button.sim-card:hover { border-color: var(--accent); }
 .total .big { font-family: var(--font-num); font-size: 1.9rem; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 .bar { display: flex; height: 18px; border-radius: 6px; overflow: hidden; background: var(--soft); }
 .bar div { height: 100%; transition: width .25s ease; }
@@ -373,17 +404,42 @@ button, select { -webkit-tap-highlight-color: transparent; touch-action: manipul
         <div class="sim-in">
           <label>세후 월급<input class="field" id="sim-salary" inputmode="numeric" autocomplete="off"></label>
           <label>목표 금액<input class="field" id="sim-goal" inputmode="numeric" autocomplete="off"></label>
-          <label>지금 모아둔 돈<input class="field" id="sim-start" inputmode="numeric" autocomplete="off" placeholder="0"></label>
-          <label>청년미래적금 (만 19~34세)
-            <select id="sim-youth"><option value="pref">우대형 (정부기여금 12%)</option><option value="gen">일반형 (정부기여금 6%)</option><option value="none">가입 못 함</option></select></label>
           <div class="wide stack" style="gap:6px"><span class="label">모으는 데 쓸 항목 (나누는 비율에서)</span><div class="sim-picks" id="sim-picks"></div></div>
           <label class="wide">한 달에 모으는 돈<span class="sim-month"><input class="field" id="sim-monthly" inputmode="numeric" autocomplete="off"><button class="chip" id="sim-auto" type="button">비율대로</button></span></label>
-          <label>적금·예금 금리 (연 %, 세전)<input class="field" id="sim-sav" inputmode="decimal" autocomplete="off"></label>
-          <label>지수 ETF 기대수익률 (연 %)<input class="field" id="sim-etf" inputmode="decimal" autocomplete="off"></label>
         </div>
-        <div class="stack" style="gap:8px"><span class="label" id="sim-head"></span><div class="sim-cards" id="sim-cards"></div></div>
+
+        <section class="sim-sec">
+          <div class="sim-sec-h"><span class="label">내 계좌 잔액</span><span class="note" id="acc-updated"></span></div>
+          <div class="acc-list" id="acc-list"></div>
+          <button class="add" id="acc-add" type="button">+ 계좌 추가</button>
+          <p class="set-note">은행 잔액은 이 앱이 직접 불러올 수 없어요. 토스·뱅크샐러드·은행 앱의 ‘내 자산’ 화면에서 확인하고 <b>월급날마다 숫자만 고쳐</b> 주세요. 여기 적은 잔액이 시뮬레이션의 시작 금액이 돼요.</p>
+        </section>
+
+        <section class="sim-sec">
+          <div class="sim-sec-h"><span class="label">매달 어디에 얼마나 넣을지</span><span class="note" id="alloc-sum"></span></div>
+          <div class="alloc-list" id="alloc-list"></div>
+          <div class="actions"><button class="btn" id="alloc-fast" type="button">가장 빠른 배분 찾기</button><button class="btn ghost" id="alloc-safe" type="button">ETF 없이 가장 빠른 배분</button></div>
+          <label class="chk"><input type="checkbox" id="sim-incpen"> 연금저축·IRP도 목표 금액에 포함 (55세 전에는 꺼내 쓰기 어려운 돈)</label>
+        </section>
+
+        <section class="plan" id="plan"></section>
+
         <div class="stack" style="gap:6px"><span class="label">모이는 속도</span><div id="sim-chart"></div><div class="sim-legend" id="sim-legend"></div></div>
+        <div class="stack" style="gap:8px"><span class="label" id="sim-head">다른 방법과 비교</span><div class="sim-cards" id="sim-cards"></div></div>
         <div class="stack" style="gap:6px"><span class="label" id="sim-sens-head">한 달에 더 모으면</span><div class="table-wrap"><table class="sim-sens" id="sim-sens"></table></div></div>
+
+        <details class="move">
+          <summary>계산에 쓰는 가정 바꾸기</summary>
+          <div class="sim-in">
+            <label>청년미래적금 (만 19~34세)
+              <select id="sim-youth"><option value="pref">우대형 (정부기여금 12%)</option><option value="gen">일반형 (정부기여금 6%)</option><option value="none">가입 못 함</option></select></label>
+            <label>지수 ETF 기대수익률 (연 %)<input class="field" id="sim-etf" inputmode="decimal" autocomplete="off"></label>
+            <label>적금·예금 금리 (연 %, 세전)<input class="field" id="sim-sav" inputmode="decimal" autocomplete="off"></label>
+            <label>파킹통장 금리 (연 %, 세전)<input class="field" id="sim-park" inputmode="decimal" autocomplete="off"></label>
+          </div>
+          <p class="note" id="sim-credit-note" style="margin:0"></p>
+        </details>
+
         <div class="stack" style="gap:6px"><span class="label">가장 효율적인 순서</span><ol class="sim-tips" id="sim-tips"></ol></div>
         <div class="sim-src" id="sim-src"></div>
       </div>
@@ -1005,45 +1061,63 @@ button, select { -webkit-tap-highlight-color: transparent; touch-action: manipul
     } catch (e) { flash('코드를 읽지 못했어요. 처음부터 끝까지 다 복사했는지 확인해 주세요'); }
   });
 
-  // ── 1억 시뮬레이터 ──
-  // 가정(2026년 11월 자료 기준): 청년미래적금 월 50만 원·3년·금리 5% 비과세·정부기여금 6/12%(만기 지급),
-  // 적금·예금 이자는 15.4% 과세, ISA 안의 지수 ETF는 비과세·분리과세로 세금을 0에 가깝다고 봄
-  function simDefaults() { return { goal: 100000000, start: 0, salary: null, monthly: null, picks: null, youth: 'pref', sav: 3.5, etf: 6 }; }
+  // ── 1억 시뮬레이터 (계좌별 잔액 + 배분 비율 조정 + 연금저축·IRP) ──
+  // 가정(2026년 11월 자료): 청년미래적금 월 50만 원·3년·금리 5% 비과세·정부기여금 6/12%(만기 지급),
+  // 적금·예금·파킹 이자는 15.4% 과세, ISA 안 지수 ETF는 세금 0에 가깝다고 봄,
+  // 연금저축(연 600만)+IRP 합쳐 연 900만 원까지 세액공제 16.5%(총급여 5,500만 이하) 또는 13.2%, 환급금은 ISA(없으면 적금)에 다시 넣음
+  function SIM_TYPES() {
+    return [
+      { k: 'youth', name: '청년미래적금', color: '--c1', note: '월 50만 원까지 · 3년 · 정부가 더 줌' },
+      { k: 'save', name: '적금·예금', color: '--c2', note: '원금 보장' },
+      { k: 'park', name: '파킹통장', color: '--c6', note: '비상금 · 언제든 출금' },
+      { k: 'isa', name: 'ISA 지수ETF', color: '--c3', note: '세금 거의 없음 · 오르내림 있음' },
+      { k: 'pension', name: '연금저축', color: '--c5', note: '연 600만 원까지 세액공제' },
+      { k: 'irp', name: 'IRP', color: '--c8', note: '연금저축과 합쳐 연 900만 원까지 공제' },
+    ];
+  }
+  function simDefaults() { return { goal: 100000000, salary: null, monthly: null, picks: null, youth: 'pref', sav: 3.5, park: 2.5, etf: 6, alloc: null, accounts: null, accUpdated: null, incPen: false }; }
   function simParams() {
     state.sim = Object.assign(simDefaults(), state.sim || {});
     const sm = state.sim;
+    if (!Array.isArray(sm.accounts)) { // 처음: 종류별 빈 계좌 (예전 ‘지금 모아둔 돈’은 적금으로 옮김)
+      sm.accounts = ['youth', 'save', 'park', 'isa', 'pension', 'irp'].map(t => ({ id: newId(), type: t, bank: '', balance: t === 'save' ? (sm.start || 0) : 0 }));
+      delete sm.start;
+    }
     const salary = sm.salary || SAL()[state.month] || 2450000;
     const picks = Array.isArray(sm.picks) ? sm.picks : state.cats.filter(c => !/생활|자유|빚|고정비/.test(c.name)).map(c => c.id);
     const autoMonthly = Math.round(salary * state.cats.filter(c => picks.includes(c.id)).reduce((a, c) => a + (Number(c.pct) || 0), 0) / 100);
     const monthly = sm.monthly != null ? sm.monthly : autoMonthly;
-    return { salary, picks, autoMonthly, monthly, goal: sm.goal || 100000000, start: sm.start || 0, youth: sm.youth, sav: Number(sm.sav) || 0, etf: Number(sm.etf) || 0 };
+    const youthOn = sm.youth !== 'none';
+    const yPct = youthOn && monthly > 0 ? Math.min(100, Math.round(500000 / monthly * 100)) : 0;
+    if (!sm.alloc) sm.alloc = { youth: yPct, save: 0, park: 0, isa: 100 - yPct, pension: 0, irp: 0 };
+    if (!youthOn && sm.alloc.youth) { sm.alloc.isa += sm.alloc.youth; sm.alloc.youth = 0; }
+    const bal = {}; SIM_TYPES().forEach(t => bal[t.k] = 0);
+    sm.accounts.forEach(a => { if (bal[a.type] != null) bal[a.type] += Number(a.balance) || 0; });
+    const grossYear = grossFromNet(salary) * 12;
+    return { salary, picks, autoMonthly, monthly, goal: sm.goal || 100000000, youth: sm.youth, sav: Number(sm.sav) || 0, park: Number(sm.park) || 0,
+      etf: Number(sm.etf) || 0, alloc: sm.alloc, bal, incPen: !!sm.incPen, creditRate: grossYear <= 55000000 ? 0.165 : 0.132, grossYear };
   }
-  function simKinds(p) {
-    const ks = [{ k: 'safe', name: '적금·예금만', risk: 'low', riskText: '안전', color: '--c2' }];
-    if (p.youth !== 'none') ks.push({ k: 'youthSafe', name: '청년미래적금 + 적금', risk: 'low', riskText: '안전', color: '--c1' },
-                                    { k: 'youthEtf', name: '청년미래적금 + ISA 지수ETF', risk: 'mid', riskText: '중간', color: '--c3' });
-    else ks.push({ k: 'mix', name: '적금 절반 + ISA 지수ETF 절반', risk: 'mid', riskText: '중간', color: '--c3' });
-    ks.push({ k: 'etf', name: 'ISA 지수ETF만', risk: 'high', riskText: '높음', color: '--c4' });
-    return ks;
-  }
-  // 한 달씩 굴려서 목표에 닿는 달과 달마다의 잔액을 구함
-  function simulate(kind, p, etfRate, maxM) {
-    const safeR = p.sav / 100 * (1 - 0.154) / 12, etfR = etfRate / 100 / 12, youthR = 0.05 / 12;
-    const gov = p.youth === 'pref' ? 0.12 : 0.06, cap = 500000, term = 36;
-    const useYouth = kind === 'youthSafe' || kind === 'youthEtf';
-    const toEtf = kind === 'youthEtf' || kind === 'etf';
-    let youth = 0, govSum = 0, safe = toEtf ? 0 : p.start, etf = toEtf ? p.start : 0, paid = p.start, reached = null;
-    const series = [p.start];
+  // 한 달씩 굴려서 목표에 닿는 달과 달마다 잔액을 구함
+  function simPlan(p, alloc, etfRate, maxM) {
+    const r = { youth: 0.05 / 12, save: p.sav / 100 * (1 - 0.154) / 12, park: p.park / 100 * (1 - 0.154) / 12, isa: etfRate / 100 / 12, pension: etfRate / 100 / 12, irp: etfRate / 100 / 12 };
+    const gov = p.youth === 'pref' ? 0.12 : p.youth === 'gen' ? 0.06 : 0;
+    const b = Object.assign({}, p.bal); let govSum = 0, paid = Object.values(p.bal).reduce((a, v) => a + v, 0), refunds = 0, yPen = 0, yIrp = 0, reached = null;
+    const sink = (alloc.isa || 0) + (alloc.pension || 0) + (alloc.irp || 0) > 0 ? 'isa' : 'save'; // 만기금·환급금을 넣을 곳
+    const usable = () => b.youth + b.save + b.park + b.isa + (p.incPen ? b.pension + b.irp : 0);
+    const series = [usable()];
     for (let m = 1; m <= maxM; m++) {
-      youth *= 1 + youthR; safe *= 1 + safeR; etf *= 1 + etfR;
-      let rest = p.monthly;
-      if (useYouth && m <= term) { const y = Math.min(cap, rest); youth += y; govSum += y * gov; rest -= y; }
-      if (kind === 'mix') { safe += rest / 2; etf += rest / 2; } else if (toEtf) etf += rest; else safe += rest;
-      paid += p.monthly;
-      if (useYouth && m === term) { const out = youth + govSum; youth = 0; govSum = 0; if (toEtf) etf += out; else safe += out; }
-      const total = youth + govSum + safe + etf;
-      series.push(total);
-      if (reached === null && total >= p.goal) reached = { m, paid };
+      Object.keys(r).forEach(k => { b[k] *= 1 + r[k]; });
+      const amt = k => p.monthly * (alloc[k] || 0) / 100;
+      let toSink = 0;
+      if (p.youth !== 'none' && m <= 36) { const y = Math.min(500000, amt('youth')); b.youth += y; govSum += y * gov; toSink += amt('youth') - y; }
+      else toSink += amt('youth');
+      ['save', 'park', 'isa'].forEach(k => { b[k] += amt(k); });
+      b.pension += amt('pension'); b.irp += amt('irp'); yPen += amt('pension'); yIrp += amt('irp');
+      b[sink] += toSink; paid += p.monthly;
+      if (m === 36 && p.youth !== 'none') { b[sink] += b.youth + govSum; b.youth = 0; govSum = 0; }
+      if (m % 12 === 0) { const credit = Math.min(Math.min(yPen, 6000000) + yIrp, 9000000) * p.creditRate; b[sink] += credit; refunds += credit; yPen = 0; yIrp = 0; }
+      const u = usable(); series.push(u);
+      if (reached === null && u >= p.goal) reached = { m, paid, refunds, buckets: Object.assign({}, b), gov: govSum };
     }
     return { reached, series };
   }
@@ -1051,83 +1125,203 @@ button, select { -webkit-tap-highlight-color: transparent; touch-action: manipul
   function whenText(m) { if (m == null) return ''; const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + m); return `${d.getFullYear()}년 ${d.getMonth() + 1}월`; }
   var simText = ''; // 처음 화면이 시뮬레이터일 때도 쓸 수 있게 var
   function simSummary() { return simText || '1억 시뮬레이터'; }
+  function presetAlloc(p, kind) {
+    const y = p.youth !== 'none' && p.monthly > 0 ? Math.min(100, Math.round(500000 / p.monthly * 100)) : 0;
+    const base = { youth: 0, save: 0, park: 0, isa: 0, pension: 0, irp: 0 };
+    if (kind === 'safe') return Object.assign(base, { save: 100 });
+    if (kind === 'youthSafe') return Object.assign(base, { youth: y, save: 100 - y });
+    if (kind === 'youthEtf') return Object.assign(base, { youth: y, isa: 100 - y });
+    if (kind === 'mix') return Object.assign(base, { save: 50, isa: 50 });
+    return Object.assign(base, { isa: 100 });
+  }
+  // 가장 빠른 배분: 파킹통장 비율은 그대로 두고 나머지를 5% 단위로 모두 시험
+  function findBest(p, noEtf) {
+    const park = p.alloc.park || 0, rest = 100 - park, step = 5; let best = null;
+    const youthMax = p.youth === 'none' ? 0 : Math.min(rest, Math.ceil(500000 / Math.max(p.monthly, 1) * 100 / step) * step);
+    for (let y = 0; y <= youthMax; y += step)
+      for (let pe = 0; pe <= rest - y; pe += step) {
+        if (!p.incPen && pe > 0) break;
+        for (let i = 0; i <= rest - y - pe; i += step) {
+          if (noEtf && i > 0) break;
+          const s = rest - y - pe - i;
+          const penAmt = p.monthly * pe / 100, pen = Math.min(penAmt, 500000), irp = penAmt - pen;
+          const a = { youth: y, save: s, park, isa: i, pension: penAmt ? pe * pen / penAmt : 0, irp: penAmt ? pe * irp / penAmt : 0 };
+          if (noEtf && pe > 0) continue;
+          const r = simPlan(p, a, p.etf, 600).reached; const m = r ? r.m : 9999;
+          // 같은 기간이면 청년미래적금(정부 지원)을 더, 그다음 원금 보장(적금)을 더 쓰는 쪽
+          if (!best || m < best.m || (m === best.m && (y > best.a.youth || (y === best.a.youth && s > best.a.save)))) best = { m, a };
+        }
+      }
+    if (best) { Object.keys(best.a).forEach(k => best.a[k] = Math.round(best.a[k])); fixSum(best.a, 'save'); }
+    return best;
+  }
+  function fixSum(a, prefer) { const keys = Object.keys(a); const d = 100 - keys.reduce((s, k) => s + a[k], 0); if (d) { const k = a[prefer] + d >= 0 ? prefer : keys.sort((x, y) => a[y] - a[x])[0]; a[k] += d; } }
+  // 한 칸을 움직이면 나머지를 비율대로 줄이거나 늘려서 합계 100% 유지
+  function setAlloc(k, v) {
+    const a = state.sim.alloc, others = Object.keys(a).filter(x => x !== k && !(x === 'youth' && state.sim.youth === 'none'));
+    v = Math.max(0, Math.min(100, Math.round(v))); const remain = 100 - v, sumO = others.reduce((s, x) => s + a[x], 0);
+    a[k] = v;
+    if (sumO > 0) others.forEach(x => a[x] = Math.round(a[x] * remain / sumO)); else if (others.length) a[others.includes('isa') ? 'isa' : others[0]] = remain;
+    const diff = 100 - Object.values(a).reduce((s, x) => s + x, 0);
+    if (diff) { const big = others.sort((x, y) => a[y] - a[x])[0]; if (big) a[big] += diff; }
+  }
+  function renderAccounts(p) {
+    const types = SIM_TYPES(), box = $('acc-list'); box.innerHTML = '';
+    state.sim.accounts.forEach((a, i) => {
+      const row = document.createElement('div'); row.className = 'acc';
+      row.innerHTML = `<span class="dot" style="background:var(${(types.find(t => t.k === a.type) || types[1]).color})"></span>
+        <select id="acc-type-${i}" aria-label="계좌 종류">${types.map(t => `<option value="${t.k}">${t.name}</option>`).join('')}</select>
+        <input class="field" id="acc-bank-${i}" placeholder="은행·증권사" maxlength="20" aria-label="은행 이름">
+        <input class="field num" id="acc-bal-${i}" inputmode="numeric" placeholder="0" aria-label="잔액"><button class="del" aria-label="계좌 삭제" type="button">×</button>`;
+      const [sel, bank, bal] = row.querySelectorAll('select, input');
+      sel.value = a.type; bank.value = a.bank || ''; bal.value = a.balance ? fmt(a.balance) : '';
+      const touched = () => { state.sim.accUpdated = Date.now(); };
+      sel.addEventListener('change', () => { a.type = sel.value; touched(); renderSim(); save(); });
+      bank.addEventListener('input', () => { a.bank = bank.value; touched(); save(); });
+      bal.addEventListener('input', () => { a.balance = parseNum(bal.value); touched(); renderSimResults(); save(); });
+      bal.addEventListener('blur', () => { bal.value = a.balance ? fmt(a.balance) : ''; });
+      row.querySelector('.del').addEventListener('click', () => { state.sim.accounts.splice(i, 1); touched(); renderSim(); save(); });
+      box.appendChild(row);
+    });
+    const total = state.sim.accounts.reduce((s, a) => s + (Number(a.balance) || 0), 0);
+    $('acc-updated').textContent = `합계 ${fmt(total)}원` + (state.sim.accUpdated ? ` · ${new Date(state.sim.accUpdated).getMonth() + 1}/${new Date(state.sim.accUpdated).getDate()} 수정` : '');
+  }
+  function renderAlloc(p) {
+    const box = $('alloc-list'); box.innerHTML = '';
+    SIM_TYPES().forEach(t => {
+      if (t.k === 'youth' && p.youth === 'none') return;
+      const pct = p.alloc[t.k] || 0, amt = Math.round(p.monthly * pct / 100);
+      const row = document.createElement('div'); row.className = 'alloc';
+      row.innerHTML = `<div class="alloc-top"><span><span class="dot" style="background:var(${t.color})"></span> <b>${t.name}</b> <small>${t.note}</small></span><span class="alloc-amt">${fmt(amt)}원 · <b>${pct}%</b></span></div>
+        <input type="range" min="0" max="100" step="1" id="alloc-${t.k}" aria-label="${t.name} 비율" style="--c:var(${t.color})">
+        <div class="alloc-warn" id="alloc-warn-${t.k}"></div>`;
+      const range = row.querySelector('input'); range.value = pct;
+      range.addEventListener('input', () => { setAlloc(t.k, Number(range.value)); renderAllocValues(); renderSimResults(); });
+      range.addEventListener('change', () => save());
+      box.appendChild(row);
+    });
+    renderAllocValues();
+  }
+  function renderAllocValues() {
+    const p = simParams(), a = p.alloc;
+    SIM_TYPES().forEach(t => {
+      const range = $('alloc-' + t.k); if (!range) return;
+      const pct = a[t.k] || 0, amt = Math.round(p.monthly * pct / 100);
+      if (document.activeElement !== range) range.value = pct;
+      range.style.setProperty('--p', pct + '%');
+      range.closest('.alloc').querySelector('.alloc-amt').innerHTML = `${fmt(amt)}원 · <b>${pct}%</b>`;
+      let w = '';
+      if (t.k === 'youth' && amt > 500000) w = `월 50만 원까지만 들어가요. 넘는 ${fmt(amt - 500000)}원은 ${a.isa > 0 ? 'ISA' : '적금'}으로 계산해요.`;
+      if (t.k === 'pension' && amt * 12 > 6000000) w = `연금저축 세액공제는 연 600만 원(월 50만 원)까지예요. 넘는 돈은 IRP로 옮기면 공제를 더 받아요.`;
+      if (t.k === 'irp') { const pen = Math.min(p.monthly * (a.pension || 0) / 100 * 12, 6000000), tot = pen + amt * 12; if (tot > 9000000) w = `연금저축과 합쳐 연 900만 원까지만 세액공제돼요. 지금 연 ${korean(Math.round(tot / 1e4) * 1e4)}이에요.`; }
+      if ((t.k === 'pension' || t.k === 'irp') && amt > 0 && !w) w = `55세 전에 꺼내면 공제받은 돈에 16.5% 세금을 다시 내요.`;
+      $('alloc-warn-' + t.k).textContent = w;
+    });
+    const sum = Object.values(a).reduce((s, x) => s + x, 0);
+    $('alloc-sum').textContent = `한 달 ${fmt(p.monthly)}원 · 합계 ${sum}%`;
+  }
   function renderSim() {
     const p = simParams(), sm = state.sim;
     const setIf = (id, v) => { const el = $(id); if (document.activeElement !== el) el.value = v; };
-    setIf('sim-salary', fmt(p.salary)); setIf('sim-goal', fmt(p.goal)); setIf('sim-start', p.start ? fmt(p.start) : '');
-    setIf('sim-monthly', fmt(p.monthly)); setIf('sim-sav', String(p.sav)); setIf('sim-etf', String(p.etf));
-    $('sim-youth').value = p.youth;
-    $('sim-auto').hidden = sm.monthly == null;
+    setIf('sim-salary', fmt(p.salary)); setIf('sim-goal', fmt(p.goal)); setIf('sim-monthly', fmt(p.monthly));
+    setIf('sim-sav', String(p.sav)); setIf('sim-etf', String(p.etf)); setIf('sim-park', String(p.park));
+    $('sim-youth').value = p.youth; $('sim-auto').hidden = sm.monthly == null; $('sim-incpen').checked = p.incPen;
     const pk = $('sim-picks'); pk.innerHTML = '';
     state.cats.forEach(c => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = c.name || '이름 없음'; b.setAttribute('aria-pressed', String(p.picks.includes(c.id)));
       b.addEventListener('click', () => { const cur = simParams().picks.slice(); const i = cur.indexOf(c.id); if (i >= 0) cur.splice(i, 1); else cur.push(c.id); state.sim.picks = cur; state.sim.monthly = null; renderSim(); save(); }); pk.appendChild(b); });
+    renderAccounts(p); renderAlloc(p); renderSimResults();
+  }
+  function renderSimResults() {
+    const p = simParams(), MAX = 600, types = SIM_TYPES();
+    $('acc-updated').textContent = `합계 ${fmt(state.sim.accounts.reduce((s, a) => s + (Number(a.balance) || 0), 0))}원` + (state.sim.accUpdated ? ` · ${new Date(state.sim.accUpdated).getMonth() + 1}/${new Date(state.sim.accUpdated).getDate()} 수정` : '');
+    $('sim-credit-note').textContent = `세액공제율: 세후 월급으로 추정한 연봉 약 ${korean(Math.round(p.grossYear / 1e6) * 1e6)} 기준 ${p.creditRate === 0.165 ? '16.5%' : '13.2%'} (총급여 5,500만 원 이하 16.5%).`;
+    const mine = simPlan(p, p.alloc, p.etf, MAX), mineBad = simPlan(p, p.alloc, Math.max(0, p.etf - 4), MAX).reached;
+    const hasRisk = (p.alloc.isa || 0) + (p.alloc.pension || 0) + (p.alloc.irp || 0) > 0;
+    const R = mine.reached;
+    let html = `<div class="plan-top"><span class="label">내 배분으로 ${korean(p.goal)}까지</span><span class="plan-big">${ym(R ? R.m : null)}</span><span class="plan-when">${R ? whenText(R.m) + ' 달성 예상' : '지금 조건으로는 50년 넘게 걸려요'}${R && hasRisk ? ` · ETF 수익률이 4%p 낮으면 ${ym(mineBad ? mineBad.m : null)}` : ''}</span></div>`;
+    if (R) {
+      const rows = types.map(t => [t, R.buckets[t.k] || 0]).filter(([, v]) => v > 1000);
+      html += `<div class="table-wrap"><table class="sim-sens"><tr><th>그때 계좌별 금액</th><th>금액</th></tr>${rows.map(([t, v]) => `<tr><td><span class="dot" style="background:var(${t.color})"></span> ${t.name}${(t.k === 'pension' || t.k === 'irp') && !p.incPen ? ' <small>(목표에 미포함)</small>' : ''}</td><td>${fmt(Math.round(v / 1000) * 1000)}원</td></tr>`).join('')}</table></div>`;
+      const gain = mine.series[R.m] - R.paid;
+      html += `<p class="note" style="margin:0">내가 넣은 돈 ${korean(Math.round(R.paid / 1e4) * 1e4)} · 불어난 돈 ${korean(Math.max(0, Math.round(gain / 1e4) * 1e4))}${R.refunds ? ` · 연말정산 세액공제로 돌려받은 돈 ${korean(Math.round(R.refunds / 1e4) * 1e4)} (ISA에 다시 넣었다고 계산)` : ''}</p>`;
+    }
+    $('plan').innerHTML = html;
 
-    const kinds = simKinds(p), MAX = 600;
-    const res = kinds.map(k => Object.assign({}, k, simulate(k.k, p, p.etf, MAX), { bad: k.k === 'safe' || k.k === 'youthSafe' ? null : simulate(k.k, p, Math.max(0, p.etf - 4), MAX).reached }));
-    const recK = p.youth !== 'none' ? 'youthEtf' : 'mix';
-    const fastest = res.filter(r => r.reached).sort((a, b) => a.reached.m - b.reached.m)[0];
-    $('sim-head').textContent = `매달 ${fmt(p.monthly)}원씩 모으면 ${korean(p.goal)}까지`;
+    // 다른 방법과 비교 (같은 월 저축액·같은 잔액)
+    const kinds = [{ k: 'safe', name: '적금·예금만', risk: 'low', riskText: '안전', color: '--c2' }];
+    if (p.youth !== 'none') kinds.push({ k: 'youthSafe', name: '청년미래적금 + 적금', risk: 'low', riskText: '안전', color: '--c1' }, { k: 'youthEtf', name: '청년미래적금 + ISA 지수ETF', risk: 'mid', riskText: '중간', color: '--c3' });
+    else kinds.push({ k: 'mix', name: '적금 절반 + ISA 지수ETF 절반', risk: 'mid', riskText: '중간', color: '--c3' });
+    kinds.push({ k: 'etf', name: 'ISA 지수ETF만', risk: 'high', riskText: '높음', color: '--c4' });
+    const res = kinds.map(k => { const a = presetAlloc(p, k.k); return Object.assign({}, k, { a }, simPlan(p, a, p.etf, MAX)); });
+    $('sim-head').textContent = '다른 방법과 비교 (누르면 그 배분으로 바꿔요)';
     const cards = $('sim-cards'); cards.innerHTML = '';
     res.forEach(r => {
-      const el = document.createElement('div'); el.className = 'sim-card' + (r.k === recK ? ' rec' : '');
-      const m = r.reached ? r.reached.m : null, gain = r.reached ? r.series[m] - r.reached.paid : 0;
-      el.innerHTML = `<span class="dot" style="background:var(${r.color})"></span>
-        <span class="nm">${r.name}<span class="risk ${r.risk}">${r.riskText}</span>${r.k === recK ? '<span class="rec-tag">추천</span>' : ''}${fastest && r.k === fastest.k && r.k !== recK ? '<span class="risk mid">가장 빠름</span>' : ''}</span>
-        <span class="when">${ym(m)}</span>
-        <span class="sub2"><span>${m ? whenText(m) + ' 달성' : '이 조건으로는 어려워요'}${m ? ` · 내 돈 ${korean(Math.round(r.reached.paid / 1e4) * 1e4)} + 불어난 돈 ${korean(Math.round(gain / 1e4) * 1e4)}` : ''}</span>${r.bad !== null && r.bad !== undefined || (r.k !== 'safe' && r.k !== 'youthSafe') ? `<span>수익률이 4%p 낮으면 ${r.bad ? ym(r.bad.m) : '50년 넘게'}</span>` : ''}</span>`;
+      const el = document.createElement('button'); el.type = 'button'; el.className = 'sim-card';
+      const m = r.reached ? r.reached.m : null, diff = R && m ? m - R.m : null;
+      el.innerHTML = `<span class="dot" style="background:var(${r.color})"></span><span class="nm">${r.name}<span class="risk ${r.risk}">${r.riskText}</span></span><span class="when">${ym(m)}</span>
+        <span class="sub2"><span>${m ? whenText(m) + ' 달성' : '이 조건으로는 어려워요'}</span><span>${diff == null ? '' : diff === 0 ? '내 배분과 같아요' : diff > 0 ? `내 배분보다 ${ym(diff)} 늦음` : `내 배분보다 ${ym(-diff)} 빠름`}</span></span>`;
+      el.addEventListener('click', () => { state.sim.alloc = Object.assign({}, r.a); renderAlloc(simParams()); renderSimResults(); save(); flash(`‘${r.name}’ 배분으로 바꿨어요`); });
       cards.appendChild(el);
     });
 
-    // 차트: 목표에 닿는 가장 늦은 전략 + 1년까지
-    const ends = res.map(r => r.reached ? r.reached.m : 240); const span = Math.min(MAX, Math.max(24, Math.max(...ends) + 12));
-    const W = 600, H = 250, L = 46, R = 10, T = 12, B = 28, yMax = p.goal * 1.15;
-    const X = m => L + (W - L - R) * m / span, Y = v => T + (H - T - B) * (1 - Math.min(v, yMax) / yMax);
-    let svg = `<svg class="sim-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="전략별 모이는 속도 그래프">`;
-    for (let i = 0; i <= 4; i++) { const v = yMax * i / 4, y = Y(v); svg += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y}" y2="${y}"/><text x="${L - 6}" y="${y + 4}" text-anchor="end">${Math.round(v / 1e6) * 100 / 100 >= 100 ? (v / 1e8).toFixed(1) + '억' : Math.round(v / 1e6) * 100 + '만'}</text>`; }
+    // 차트: 내 배분(굵은 선) + 비교 방법들
+    const all = [{ name: '내 배분', color: '--ink', reached: mine.reached, series: mine.series, mine: true }].concat(res);
+    const ends = all.map(r => r.reached ? r.reached.m : 240); const span = Math.min(MAX, Math.max(24, Math.max(...ends) + 6));
+    const W = 600, H = 250, L = 46, Rr = 10, T = 12, B = 28, yMax = p.goal * 1.15;
+    const X = m => L + (W - L - Rr) * m / span, Y = v => T + (H - T - B) * (1 - Math.min(v, yMax) / yMax);
+    let svg = `<svg class="sim-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="배분별 모이는 속도 그래프">`;
+    for (let i = 0; i <= 4; i++) { const v = yMax * i / 4, y = Y(v); svg += `<line class="grid" x1="${L}" x2="${W - Rr}" y1="${y}" y2="${y}"/><text x="${L - 6}" y="${y + 4}" text-anchor="end">${v >= 1e8 ? (v / 1e8).toFixed(1) + '억' : Math.round(v / 1e6) * 100 + '만'}</text>`; }
     const stepY = span > 120 ? 24 : 12;
     for (let m = 0; m <= span; m += stepY) svg += `<text x="${X(m)}" y="${H - 8}" text-anchor="middle">${m / 12}년</text>`;
-    svg += `<line class="goal" x1="${L}" x2="${W - R}" y1="${Y(p.goal)}" y2="${Y(p.goal)}"/><text x="${L + 6}" y="${Y(p.goal) - 6}" text-anchor="start">목표 ${korean(p.goal)}</text>`;
-    res.forEach(r => { const pts = r.series.slice(0, (r.reached ? Math.min(r.reached.m, span) : span) + 1).map((v, m) => `${X(m).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
-      svg += `<polyline points="${pts}" fill="none" stroke="var(${r.color})" stroke-width="${r.k === recK ? 3 : 2}" stroke-linejoin="round"/>`;
-      if (r.reached && r.reached.m <= span) svg += `<circle cx="${X(r.reached.m)}" cy="${Y(p.goal)}" r="4" fill="var(${r.color})"/>`; });
+    svg += `<line class="goal" x1="${L}" x2="${W - Rr}" y1="${Y(p.goal)}" y2="${Y(p.goal)}"/><text x="${L + 6}" y="${Y(p.goal) - 6}" text-anchor="start">목표 ${korean(p.goal)}</text>`;
+    all.slice().reverse().forEach(r => { const pts = r.series.slice(0, (r.reached ? Math.min(r.reached.m, span) : span) + 1).map((v, m) => `${X(m).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+      svg += `<polyline points="${pts}" fill="none" stroke="var(${r.color})" stroke-width="${r.mine ? 3.2 : 1.6}" stroke-linejoin="round" ${r.mine ? '' : 'opacity="0.75"'}/>`;
+      if (r.reached && r.reached.m <= span) svg += `<circle cx="${X(r.reached.m)}" cy="${Y(p.goal)}" r="${r.mine ? 5 : 3.5}" fill="var(${r.color})"/>`; });
     $('sim-chart').innerHTML = svg + '</svg>';
-    $('sim-legend').innerHTML = res.map(r => `<span><span class="dot" style="background:var(${r.color})"></span>${r.name}</span>`).join('');
+    $('sim-legend').innerHTML = all.map(r => `<span><span class="dot" style="background:var(${r.color})"></span>${r.name}</span>`).join('');
 
-    // 한 달에 더 모으면 (추천 방법 기준)
-    const rec = res.find(r => r.k === recK);
+    // 한 달에 더 모으면 (내 배분 기준)
     const opts = [...new Set([p.monthly - 200000, p.monthly, p.monthly + 200000, p.monthly + 400000, p.monthly + 600000].filter(v => v >= 100000).map(v => Math.round(v / 10000) * 10000))].sort((a, b) => a - b);
-    $('sim-sens-head').textContent = `한 달에 더 모으면 (${rec.name} 기준)`;
-    $('sim-sens').innerHTML = '<tr><th>월 저축</th><th>월급의</th><th>걸리는 기간</th></tr>' + opts.map(v => { const r = simulate(recK, Object.assign({}, p, { monthly: v }), p.etf, MAX).reached;
+    $('sim-sens-head').textContent = '한 달에 더 모으면 (내 배분 기준)';
+    $('sim-sens').innerHTML = '<tr><th>월 저축</th><th>월급의</th><th>걸리는 기간</th></tr>' + opts.map(v => { const r = simPlan(Object.assign({}, p, { monthly: v }), p.alloc, p.etf, MAX).reached;
       return `<tr class="${v === Math.round(p.monthly / 10000) * 10000 ? 'me' : ''}"><td>${fmt(v)}원</td><td>${Math.round(v / p.salary * 100)}%</td><td>${r ? ym(r.m) : '50년 넘게'}</td></tr>`; }).join('');
 
     const tips = [];
-    if (p.youth !== 'none') tips.push(`<b>청년미래적금에 월 50만 원을 먼저 채워요.</b> 정부가 납입액의 ${p.youth === 'pref' ? '12' : '6'}%를 더해 주고 이자에 세금이 없어서, 3년 동안은 어떤 상품보다 확실하게 유리해요. 2차 모집이 12월 예정이라는 자료가 있으니 서민금융진흥원·은행 공지를 확인하세요.`);
-    tips.push('<b>나머지는 ISA 계좌에서 지수 ETF를 매달 같은 날 사요.</b> ISA는 벌어들인 돈의 일정 금액까지 세금이 없고 넘는 부분도 9.9%만 내요. 주가는 오르내리므로 목표 2~3년 전부터는 적금·예금으로 조금씩 옮겨 두세요.');
-    tips.push('<b>비상금 3~6개월치는 파킹통장에 따로 두세요.</b> 급할 때 적금을 깨거나 ETF를 손해 보고 팔지 않아도 돼요.');
-    tips.push(`<b>가장 큰 차이는 상품보다 저축액이에요.</b> 위 표처럼 한 달 20만 원을 더 모으면 기간이 크게 줄어요. 빚이 있다면 이자가 높은 빚부터 갚는 게 어떤 투자보다 확실한 수익이에요.`);
+    if (p.youth !== 'none') tips.push(`<b>청년미래적금에 월 50만 원을 먼저 채워요.</b> 정부가 넣은 돈의 ${p.youth === 'pref' ? '12' : '6'}%를 더 주고 이자에 세금이 없어서 3년 동안은 가장 확실하게 유리해요. 2차 모집이 12월 예정이라는 자료가 있으니 서민금융진흥원·은행 공지를 확인하세요.`);
+    tips.push('<b>비상금 3~6개월치는 파킹통장에 따로 둬요.</b> 급할 때 적금을 깨거나 ETF를 손해 보고 팔지 않아도 돼요.');
+    tips.push('<b>나머지는 ISA 계좌에서 지수 ETF를 매달 같은 날 사요.</b> ISA는 번 돈의 일정 금액까지 세금이 없고 넘는 부분도 9.9%만 내요. 목표 2~3년 전부터는 적금·예금으로 조금씩 옮겨 두세요.');
+    tips.push(`<b>연금저축·IRP는 1억을 중간에 쓸 계획이면 적게 넣어요.</b> 넣은 해에 ${p.creditRate === 0.165 ? '16.5' : '13.2'}%를 연말정산으로 돌려받아 가장 수익이 높아 보이지만, 55세 전에 꺼내면 16.5% 세금을 다시 내요. 노후용으로 월 몇만 원씩만 따로 가져가는 걸 추천해요.`);
+    tips.push('<b>가장 큰 차이는 상품보다 저축액이에요.</b> 위 표처럼 한 달 20만 원을 더 모으면 기간이 크게 줄어요. 빚이 있다면 이자가 높은 빚부터 갚는 게 어떤 투자보다 확실한 수익이에요.');
     $('sim-tips').innerHTML = tips.map(t => `<li>${t}</li>`).join('');
     $('sim-src').innerHTML = '<span>자료 (2026년 11월 검색, 가입 전 공식 공고로 확인하세요)</span>' +
       [['청년미래적금 조건 · 하나은행', 'https://blog.hanabank.com/entry/2026-%EC%B2%AD%EB%85%84%EB%AF%B8%EB%9E%98%EC%A0%81%EA%B8%88-%EC%B6%9C%EC%8B%9C%EC%9D%BC-%EC%8B%A0%EC%B2%AD-%EB%B0%A9%EB%B2%95-%EC%A1%B0%EA%B1%B4-%EC%B4%9D%EC%A0%95%EB%A6%AC'],
        ['청년도약계좌 신규가입 종료', 'https://braindetox.kr/posts/youth_leap_account_guide.html'],
+       ['연금저축·IRP 세액공제 한도 · KB자산운용', 'https://kbam.co.kr/pension/guide/pension-tax-deduction-refund-guide'],
+       ['연금저축 세액공제 한도 2026', 'https://glasswallet.com/calculate/pension-savings-tax-credit/limit-guide'],
        ['11월 저축은행 적금 금리 · 한국금융신문', 'https://www.fntimes.com/html/view.php?ud=2026112211115545767c96e79780_18'],
        ['파킹통장 금리 비교', 'https://www.bankboard.kr/parking'],
        ['ISA 개편 논의 · 머니투데이', 'https://www.mt.co.kr/article/2026091021535252605']]
       .map(([t, u]) => `<a href="${u}" target="_blank" rel="noopener">${t}</a>`).join('') +
       '<span>ETF 수익률은 과거 평균을 바탕으로 한 가정이에요. 실제로는 해마다 크게 오르내리고, 손해를 볼 수도 있어요.</span>';
-    simText = `${korean(p.goal)} 모으기 (매달 ${fmt(p.monthly)}원)\n` + res.map(r => `· ${r.name}: ${r.reached ? ym(r.reached.m) + ' (' + whenText(r.reached.m) + ')' : '50년 넘게'}${r.k === recK ? ' ← 추천' : ''}`).join('\n');
+    simText = `${korean(p.goal)} 모으기 (매달 ${fmt(p.monthly)}원)\n내 배분: ` + types.filter(t => p.alloc[t.k]).map(t => `${t.name} ${p.alloc[t.k]}%`).join(', ') + ` → ${ym(R ? R.m : null)}${R ? ' (' + whenText(R.m) + ')' : ''}\n` +
+      res.map(r => `· ${r.name}: ${r.reached ? ym(r.reached.m) : '50년 넘게'}`).join('\n');
   }
   // 시뮬레이터 입력
-  [['sim-salary', 'salary'], ['sim-goal', 'goal'], ['sim-start', 'start'], ['sim-monthly', 'monthly']].forEach(([id, key]) => {
+  [['sim-salary', 'salary'], ['sim-goal', 'goal'], ['sim-monthly', 'monthly']].forEach(([id, key]) => {
     const el = $(id);
-    el.addEventListener('input', () => { simParams(); const v = parseNum(el.value); state.sim[key] = key === 'start' ? v : (v || null); if (key === 'salary') state.sim.monthly = null; renderSim(); save(); });
+    el.addEventListener('input', () => { simParams(); const v = parseNum(el.value); state.sim[key] = v || null; if (key === 'salary') state.sim.monthly = null; renderAllocValues(); renderSimResults(); save(); });
     el.addEventListener('blur', () => renderSim());
   });
-  [['sim-sav', 'sav'], ['sim-etf', 'etf']].forEach(([id, key]) => {
+  [['sim-sav', 'sav'], ['sim-etf', 'etf'], ['sim-park', 'park']].forEach(([id, key]) => {
     const el = $(id);
-    el.addEventListener('input', () => { simParams(); const v = parseFloat(el.value.replace(/[^\d.]/g, '')); state.sim[key] = isNaN(v) ? 0 : Math.min(v, 30); renderSim(); save(); });
+    el.addEventListener('input', () => { simParams(); const v = parseFloat(el.value.replace(/[^\d.]/g, '')); state.sim[key] = isNaN(v) ? 0 : Math.min(v, 30); renderSimResults(); save(); });
   });
   $('sim-youth').addEventListener('change', e => { simParams(); state.sim.youth = e.target.value; renderSim(); save(); });
   $('sim-auto').addEventListener('click', () => { simParams(); state.sim.monthly = null; renderSim(); save(); });
+  $('sim-incpen').addEventListener('change', e => { simParams(); state.sim.incPen = e.target.checked; renderSimResults(); save(); });
+  $('acc-add').addEventListener('click', () => { simParams(); state.sim.accounts.push({ id: newId(), type: 'save', bank: '', balance: 0 }); renderSim(); save(); const el = $('acc-bank-' + (state.sim.accounts.length - 1)); if (el) el.focus(); });
+  $('alloc-fast').addEventListener('click', () => { const p = simParams(); const b = findBest(p, false); if (b) { state.sim.alloc = b.a; renderAlloc(simParams()); renderSimResults(); save(); flash(`가장 빠른 배분: ${ym(b.m < 9999 ? b.m : null)}`); } });
+  $('alloc-safe').addEventListener('click', () => { const p = simParams(); const b = findBest(p, true); if (b) { state.sim.alloc = b.a; renderAlloc(simParams()); renderSimResults(); save(); flash(`ETF 없이 가장 빠른 배분: ${ym(b.m < 9999 ? b.m : null)}`); } });
 
   // ── 설정: 앱 아이콘 바꾸기 (이 기기에만 저장) ──
   const ICON_KEY = 'salary-split-icon';
