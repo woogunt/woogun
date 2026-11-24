@@ -1,0 +1,768 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="월급을 정해둔 비율대로 투자·저축·고정비·생활비 통장에 나눠 주는 앱">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="월급 쪼개기">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="application-name" content="월급 쪼개기">
+<meta name="theme-color" content="#F1F4F1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101614" media="(prefers-color-scheme: dark)">
+<meta name="format-detection" content="telephone=no">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; font: 14px system-ui, sans-serif; min-height: 100vh; overscroll-behavior-y: none; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+<script>
+// 오프라인에서도 열리도록 서비스 워커 등록 (https 주소에서만 동작)
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+<title>월급 쪼개기</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: 왼쪽 설정(달 선택·월급·비율) / 오른쪽 결과(월별 또는 연간), 좁으면 한 줄로 쌓임 */
+:root {
+  --bg: #F1F4F1; --surface: #FFFFFF; --ink: #16201C; --muted: #5C6A63; --line: #D9E0DB;
+  --accent: #1E6B57; --accent-ink: #FFFFFF; --warn: #B5562A; --ok: #1E6B57; --soft: #E6EDE8;
+  --c1: #1E6B57; --c2: #3A6FB0; --c3: #C08A1E; --c4: #B5562A; --c5: #7A5AA6; --c6: #4D8C8C; --c7: #8A6B4F; --c8: #A04870;
+  --today: rgba(120, 190, 240, 0.28); --today-ink: #2B6E9E;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #101614; --surface: #18201D; --ink: #E6ECE8; --muted: #95A39C; --line: #2A3531;
+  --accent: #4FB394; --accent-ink: #0C1411; --warn: #E08A5E; --ok: #4FB394; --soft: #1F2925;
+  --c1: #4FB394; --c2: #6E9DDB; --c3: #E0B04A; --c4: #E08A5E; --c5: #A88AD6; --c6: #6FB8B8; --c7: #C29C7A; --c8: #D7769E;
+  --today: rgba(120, 190, 240, 0.20); --today-ink: #8CC8F0;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #101614; --surface: #18201D; --ink: #E6ECE8; --muted: #95A39C; --line: #2A3531;
+  --accent: #4FB394; --accent-ink: #0C1411; --warn: #E08A5E; --ok: #4FB394; --soft: #1F2925;
+  --c1: #4FB394; --c2: #6E9DDB; --c3: #E0B04A; --c4: #E08A5E; --c5: #A88AD6; --c6: #6FB8B8; --c7: #C29C7A; --c8: #D7769E;
+  --today: rgba(120, 190, 240, 0.20); --today-ink: #8CC8F0;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; margin-bottom: 20px; }
+h1 { font-size: 1.6rem; margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
+header p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 20px; align-items: start; }
+@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; color: var(--muted); }
+.row { display: flex; align-items: center; gap: 8px; }
+.stack { display: flex; flex-direction: column; gap: 10px; }
+button { font-family: inherit; font-size: 0.85rem; cursor: pointer; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* 달 선택 */
+.months { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+@media (max-width: 460px) { .months { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.mon { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 9px; padding: 7px 4px; display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; }
+.mon b { font-size: 0.85rem; }
+.mon span { font-family: var(--font-num); font-size: 0.7rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.mon:hover { border-color: var(--accent); }
+.mon[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.mon[aria-pressed="true"] span { color: var(--accent-ink); opacity: .85; }
+.mon.empty span { color: var(--warn); }
+.ynav { border: 1px solid var(--line); background: var(--surface); color: var(--ink); width: 30px; height: 30px; border-radius: 8px; font-size: 1.1rem; line-height: 1; }
+.ynav:hover { border-color: var(--accent); color: var(--accent); }
+.yr { font-weight: 700; font-size: 1.05rem; font-variant-numeric: tabular-nums; min-width: 4.2em; text-align: center; }
+.mon.today { background: var(--today); border-color: var(--today-ink); }
+.mon.today b::after { content: "이번 달"; display: block; font-size: 0.62rem; font-weight: 600; line-height: 1.2; color: var(--today-ink); }
+.mon[aria-pressed="true"].today { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px var(--today); }
+.mon[aria-pressed="true"].today b::after { color: var(--accent-ink); }
+.today-line { font-size: 0.85rem; color: var(--today-ink); font-weight: 600; background: var(--today); padding: 3px 10px; border-radius: 999px; font-variant-numeric: tabular-nums; }
+@media (max-width: 460px) { .mon.today b::after { content: ""; } }
+
+/* 월급 입력 */
+.salary-input { display: flex; align-items: center; gap: 8px; border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 14px; background: var(--bg); }
+.salary-input:focus-within { border-color: var(--accent); }
+.salary-input input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font-family: var(--font-num); font-size: 1.6rem; font-weight: 600; outline: none; text-align: right; font-variant-numeric: tabular-nums; }
+.salary-input span { color: var(--muted); font-weight: 600; }
+.below { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 12px; min-height: 1.3em; }
+.reading { color: var(--muted); font-size: 0.85rem; min-width: 0; }
+.annual { margin-left: auto; text-align: right; color: var(--muted); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+.annual b { color: var(--ink); font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 5px 11px; }
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+.chip.armed { border-color: var(--warn); color: var(--warn); }
+
+/* 세전 → 세후 */
+.taxbox { border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: var(--bg); display: flex; flex-direction: column; gap: 12px; }
+.field { font-family: var(--font-num); font-size: 0.9rem; padding: 7px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); text-align: right; min-width: 0; width: 100%; }
+.ded { display: flex; flex-direction: column; font-size: 0.88rem; }
+.ded div { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; }
+.ded b { font-family: var(--font-num); font-weight: 500; font-variant-numeric: tabular-nums; }
+.ded .dsum { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 8px; color: var(--warn); }
+.ded .dtot { font-weight: 700; font-size: 1rem; color: var(--accent); }
+.ded .dtot b { font-weight: 600; }
+
+/* 비율 목록 */
+.cats { display: flex; flex-direction: column; gap: 8px; }
+.cat { display: grid; grid-template-columns: 12px minmax(0, 1fr) 88px 30px; align-items: center; gap: 10px; }
+.dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex: none; }
+.cat input[type=text] { min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-family: inherit; font-size: 0.95rem; background: var(--surface); color: var(--ink); }
+.pct { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 0 8px; background: var(--surface); }
+.pct input { width: 100%; min-width: 0; border: 0; background: transparent; color: var(--ink); font-family: var(--font-num); font-size: 0.95rem; text-align: right; padding: 8px 2px; outline: none; font-variant-numeric: tabular-nums; }
+.del { border: 0; background: transparent; color: var(--muted); font-size: 1.1rem; width: 30px; height: 30px; border-radius: 6px; }
+.del:hover { background: var(--soft); color: var(--warn); }
+.add { align-self: flex-start; border: 1px dashed var(--line); background: transparent; color: var(--muted); border-radius: 8px; padding: 7px 12px; }
+.add:hover { color: var(--accent); border-color: var(--accent); }
+.sum { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--soft); font-size: 0.9rem; }
+.sum b { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.pill { font-size: 0.75rem; font-weight: 600; padding: 3px 9px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.pill.ok { color: var(--ok); } .pill.bad { color: var(--warn); }
+.opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 420px) { .opts { grid-template-columns: minmax(0, 1fr); } }
+.opts label { display: flex; flex-direction: column; gap: 4px; }
+select { font-family: inherit; font-size: 0.9rem; padding: 7px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
+
+/* 결과 */
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--soft); border-radius: 10px; }
+.seg button { border: 0; background: transparent; color: var(--muted); padding: 8px 10px; border-radius: 7px; font-weight: 600; font-size: 0.9rem; }
+.seg button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.total { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.total .big { font-family: var(--font-num); font-size: 1.9rem; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.bar { display: flex; height: 18px; border-radius: 6px; overflow: hidden; background: var(--soft); }
+.bar div { height: 100%; transition: width .25s ease; }
+.bar div + div { border-left: 2px solid var(--surface); }
+.results { display: flex; flex-direction: column; }
+.res { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 13px 0; border-bottom: 1px solid var(--line); }
+.res:last-child { border-bottom: 0; }
+.res .name { font-weight: 600; overflow-wrap: anywhere; }
+.res .name small { color: var(--muted); font-weight: 500; margin-left: 6px; font-family: var(--font-num); }
+.res .amt { font-family: var(--font-num); font-size: 1.15rem; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.res .sub { grid-column: 2 / 4; display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 0.8rem; }
+.res.unassigned .name, .res.unassigned .amt { color: var(--warn); }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 0.82rem; }
+th, td { padding: 8px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+td { font-family: var(--font-num); }
+th { font-weight: 600; color: var(--muted); background: var(--soft); position: sticky; top: 0; }
+th:first-child, td:first-child { text-align: left; font-family: var(--font-body); font-weight: 600; color: var(--ink); position: sticky; left: 0; background: var(--surface); }
+th:first-child { background: var(--soft); }
+th .dot { margin-right: 5px; vertical-align: -1px; }
+tbody tr { cursor: pointer; }
+tbody tr:hover td { background: var(--soft); }
+tbody tr.cur td:first-child { color: var(--accent); }
+tbody tr.today td, tbody tr.today td:first-child { background-image: linear-gradient(var(--today), var(--today)); }
+tbody td.zero { color: var(--muted); }
+tfoot td { font-weight: 600; border-bottom: 0; background: var(--soft); }
+tfoot td:first-child { background: var(--soft); }
+
+.note { color: var(--muted); font-size: 0.8rem; margin: 0; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { border: 0; background: var(--accent); color: var(--accent-ink); border-radius: 9px; padding: 9px 16px; font-weight: 600; }
+.btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.btn.ghost:hover { border-color: var(--accent); }
+.toast { font-size: 0.85rem; color: var(--accent); min-height: 1.2em; }
+textarea.fallback { width: 100%; min-height: 140px; font-family: var(--font-num); font-size: 0.8rem; border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: var(--bg); color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { .bar div { transition: none; } }
+/* 동기화 상태 */
+.sync { display: inline-block; margin-left: 6px; font-size: 0.75rem; font-weight: 600; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.sync[data-s="ok"] { color: var(--ok); border-color: currentColor; }
+.sync[data-s="err"] { color: var(--warn); border-color: currentColor; }
+.move { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.move summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; font-weight: 600; }
+.move[open] { gap: 10px; }
+.move > * + * { margin-top: 10px; }
+/* 아이폰: 입력칸 누를 때 확대 방지(16px 이상), 탭 반응 */
+html { -webkit-text-size-adjust: 100%; }
+button, select { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+@media (max-width: 860px) {
+  .cat input[type=text], .pct input, select, .field, textarea.fallback { font-size: 16px; }
+  .chip { padding: 7px 12px; }
+  .del { width: 36px; height: 36px; }
+  .cat { grid-template-columns: 12px minmax(0, 1fr) 84px 36px; }
+}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>월급 쪼개기</h1>
+    <p>달마다 월급을 넣으면 정해둔 비율대로 통장별 금액이 나와요. <span class="sync" id="syncStatus" data-s="local">이 기기에만 저장</span></p>
+  </header>
+
+  <div class="grid">
+    <section class="panel" aria-label="설정">
+      <div class="stack">
+        <div class="row" style="justify-content:space-between;flex-wrap:wrap">
+          <div class="row">
+            <button class="ynav" id="yearPrev" aria-label="이전 해">‹</button>
+            <span class="yr" id="yearLabel"></span>
+            <button class="ynav" id="yearNext" aria-label="다음 해">›</button>
+            <button class="chip" id="yearNow" hidden>올해로</button>
+          </div>
+          <span class="today-line" id="todayLine"></span>
+        </div>
+        <div class="months" id="months"></div>
+      </div>
+
+      <div class="stack" style="gap:8px">
+        <label class="label" for="salary" id="salaryLabel">실수령 월급</label>
+        <div class="salary-input">
+          <input id="salary" inputmode="numeric" autocomplete="off" placeholder="0">
+          <span>원</span>
+        </div>
+        <div class="below"><div class="reading" id="reading"></div><div class="annual" id="annual"></div></div>
+        <div class="chips" aria-label="빠른 입력">
+          <button class="chip" data-clear>지우기</button>
+        </div>
+        <div class="taxbox" id="taxBox" hidden>
+          <div class="opts">
+            <label><span class="label">비과세 (식대 등, 월)</span><input id="nontax" class="field" inputmode="numeric" autocomplete="off"></label>
+            <label><span class="label">부양가족 수 (본인 포함)</span>
+              <select id="fam"><option value="1">1명 (본인만)</option><option value="2">2명</option><option value="3">3명</option><option value="4">4명</option><option value="5">5명</option><option value="6">6명</option></select>
+            </label>
+          </div>
+          <div class="ded" id="ded"></div>
+          <p class="note">2026년 요율로 계산한 추정치예요. 국민연금 4.75%(상한 659만원 기준), 건강보험 3.595%, 장기요양 건강보험료의 13.14%, 고용보험 0.9%를 빼고, 소득세는 간이세액표 계산식으로 어림했어요. 실제 급여명세서와 수천 원 차이 날 수 있어요.</p>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="row" style="justify-content:space-between;flex-wrap:wrap">
+          <span class="label">나누는 비율 (합계 1, 모든 달 공통)</span>
+          <div class="chips">
+            <button class="chip" data-preset="mine">기본 5통장</button>
+            <button class="chip" data-preset="503020">50/30/20 법칙</button>
+            <button class="chip" data-preset="save">저축 집중</button>
+          </div>
+        </div>
+        <div class="cats" id="cats"></div>
+        <button class="add" id="addCat">+ 항목 추가</button>
+        <div class="sum" id="sum"></div>
+      </div>
+
+      <div class="opts">
+        <label><span class="label">나누고 남는 원 단위 자투리는</span>
+          <select id="spill"></select>
+        </label>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="결과" aria-live="polite">
+      <div class="seg" role="tablist" aria-label="기간 선택">
+        <button role="tab" id="view-month" data-view="month">월별</button>
+        <button role="tab" id="view-year" data-view="year">연간 (1~12월 합계)</button>
+      </div>
+      <div class="total">
+        <span class="label" id="totalLabel"></span>
+        <span class="big" id="totalBig">0원</span>
+      </div>
+      <div class="bar" id="bar"></div>
+      <div class="results" id="results"></div>
+      <div class="stack" id="yearTableBox" hidden>
+        <span class="label">달별 이체 금액 (줄을 누르면 그 달로 이동)</span>
+        <div class="table-wrap"><table id="yearTable"></table></div>
+      </div>
+      <p class="note" id="note"></p>
+      <div class="actions">
+        <button class="btn" id="copy">결과 복사</button>
+        <button class="btn ghost" id="reset">처음 설정으로</button>
+      </div>
+      <div class="toast" id="toast"></div>
+      <textarea class="fallback" id="fallback" hidden readonly aria-label="복사할 결과"></textarea>
+      <details class="move" id="moveBox">
+        <summary>다른 기기로 옮기기 (설정 코드)</summary>
+        <p class="note">로그인 없이 쓰는 사이트처럼 자동 동기화가 안 되는 곳으로 옮길 때 써요. 비율·월급·세금 설정이 모두 들어 있어요.</p>
+        <div class="actions"><button class="btn ghost" id="exportCode">설정 코드 복사</button></div>
+        <textarea class="fallback" id="importCode" placeholder="다른 기기에서 복사한 설정 코드를 여기에 붙여넣으세요" aria-label="설정 코드 붙여넣기"></textarea>
+        <div class="actions"><button class="btn" id="importBtn">붙여넣은 코드 적용</button></div>
+      </details>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  const KEY = 'salary-split-v1';
+  const COLORS = ['--c1','--c2','--c3','--c4','--c5','--c6','--c7','--c8'];
+  const PRESETS = {
+    mine:   [['투자', 25], ['저축', 25], ['고정비', 25], ['생활비', 20], ['비상금', 5]],
+    '503020': [['고정비·필수', 50], ['생활비·여가', 30], ['저축·투자', 20]],
+    save:   [['저축', 40], ['투자', 20], ['고정비', 20], ['생활비', 15], ['비상금', 5]],
+  };
+  const fromPreset = p => PRESETS[p].map(([name, pct], i) => ({ name, pct, color: i % COLORS.length }));
+  const defaults = () => ({ years: { [new Date().getFullYear()]: Array(12).fill(2500000) }, year: new Date().getFullYear(), month: new Date().getMonth(), cats: fromPreset('mine'), unit: 1, spill: 3, view: 'month', gross: {}, inputMode: 'net', tax: { nontax: 200000, fam: 1 } });
+
+  let state = defaults();
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s && Array.isArray(s.cats)) {
+      const Y0 = new Date().getFullYear();
+      if (!s.years || typeof s.years !== 'object') {
+        const arr = Array.isArray(s.salaries) && s.salaries.length === 12 ? s.salaries : Array(12).fill(Number(s.salary) || 0);
+        s.years = { [Y0]: arr };
+      }
+      delete s.salary; delete s.salaries;
+      const savedYear = s.year;
+      state = Object.assign(state, s);
+      state.year = Y0; // 열 때는 항상 올해로
+      state.tax = Object.assign({ nontax: 200000, fam: 1 }, state.tax);
+      state.unit = 1;
+      state.gross = {}; state.inputMode = 'net'; // 월급은 세후(실수령)로만 입력, 세전은 자동 추정
+      if (savedYear !== Y0) state.month = new Date().getMonth();
+    }
+  } catch (e) {}
+  const save = () => { onLocalChange(); try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+
+  // ── 기기 간 동기화: 같은 claude.ai 계정이면 PC·휴대폰이 같은 설정을 봄 ──
+  const SYNC_KEYS = ['cats', 'years', 'unit', 'spill', 'tax'];
+  const clientId = Math.random().toString(36).slice(2);
+  const pick = () => { const o = {}; SYNC_KEYS.forEach(k => o[k] = state[k]); return o; };
+  let lastSynced = JSON.stringify(pick()), remoteRef = null, syncReady = false, pushTimer = null, writing = false, pendingPush = false;
+  function setSync(s, text) { const el = document.getElementById('syncStatus'); if (el) { el.dataset.s = s; el.textContent = text; } }
+  function onLocalChange() {
+    const s = JSON.stringify(pick());
+    if (s === lastSynced) return;
+    lastSynced = s; state.updatedAt = Date.now();
+    if (syncReady) { setSync('busy', '동기화 중…'); clearTimeout(pushTimer); pushTimer = setTimeout(pushNow, 800); }
+  }
+  async function pushNow() {
+    if (!remoteRef) return;
+    if (writing) { pendingPush = true; return; }
+    writing = true;
+    try { await remoteRef.set(Object.assign(pick(), { updatedAt: state.updatedAt || Date.now(), by: clientId })); setSync('ok', '모든 기기에 동기화됨'); }
+    catch (e) { setSync('err', '동기화 실패 · 이 기기에 저장됨'); }
+    writing = false;
+    if (pendingPush) { pendingPush = false; pushNow(); }
+  }
+  // 선택한 해의 1~12월 월급 (없는 해는 빈 칸으로 새로 만듦)
+  const SAL = () => { const k = String(state.year); if (!Array.isArray(state.years[k])) state.years[k] = Array(12).fill(0); return state.years[k]; };
+  // 세전 월급 (세전으로 입력한 달만 값이 있음)
+  const GROSS = () => { const k = String(state.year); if (!Array.isArray(state.gross[k])) state.gross[k] = Array(12).fill(0); return state.gross[k]; };
+  const isGross = () => state.inputMode === 'gross';
+
+  // 2026년 근로자 부담 요율
+  const TAX = { np: 0.0475, npMin: 400000, npMax: 6590000, hi: 0.03595, ltc: 0.1314, ei: 0.009 };
+  const f10 = n => Math.floor(n / 10) * 10;
+  function earnedDeduction(T) {
+    let d;
+    if (T <= 5e6) d = T * 0.7; else if (T <= 15e6) d = 3.5e6 + (T - 5e6) * 0.4; else if (T <= 45e6) d = 7.5e6 + (T - 15e6) * 0.15;
+    else if (T <= 1e8) d = 12e6 + (T - 45e6) * 0.05; else d = 14.75e6 + (T - 1e8) * 0.02;
+    return Math.min(d, 2e7);
+  }
+  function specialDeduction(T, fam) { // 간이세액표의 특별소득공제 등 어림식
+    if (T > 1.2e8) return 0;
+    const [b, r1, r2, r3] = fam >= 3 ? [5e6, .07, .05, .03] : fam === 2 ? [3.6e6, .04, .02, .01] : [3.1e6, .04, .015, .005];
+    let d;
+    if (T <= 3e7) d = b + T * r1; else if (T <= 4.5e7) d = b + T * r1 - (T - 3e7) * 0.05; else if (T <= 7e7) d = b + T * r2; else d = b + T * r3;
+    if (fam >= 3 && T > 4e7) d += (T - 4e7) * 0.04;
+    return Math.max(0, d);
+  }
+  function progressive(x) {
+    const B = [[14e6, .06, 0], [5e7, .15, 1.26e6], [8.8e7, .24, 5.76e6], [1.5e8, .35, 15.44e6], [3e8, .38, 19.94e6], [5e8, .40, 25.94e6], [1e9, .42, 35.94e6], [Infinity, .45, 65.94e6]];
+    for (const [lim, r, k] of B) if (x <= lim) return Math.max(0, x * r - k);
+  }
+  function earnedCredit(tax, T) {
+    const c = tax <= 1.3e6 ? tax * 0.55 : 715000 + (tax - 1.3e6) * 0.3;
+    let lim;
+    if (T <= 3.3e7) lim = 740000; else if (T <= 7e7) lim = Math.max(740000 - (T - 3.3e7) * 0.008, 660000);
+    else if (T <= 1.2e8) lim = Math.max(660000 - (T - 7e7) * 0.5, 500000); else lim = Math.max(500000 - (T - 1.2e8) * 0.5, 200000);
+    return Math.min(c, lim);
+  }
+  function deductions(gross) {
+    const taxable = Math.max(0, gross - Math.min(state.tax.nontax, gross));
+    if (!taxable) return { np: 0, hi: 0, ltc: 0, ei: 0, it: 0, lt: 0, total: 0, net: gross };
+    const npBase = Math.floor(Math.min(Math.max(taxable, TAX.npMin), TAX.npMax) / 1000) * 1000;
+    const np = f10(npBase * TAX.np), hi = f10(taxable * TAX.hi), ltc = f10(hi * TAX.ltc), ei = f10(taxable * TAX.ei);
+    const T = taxable * 12, fam = state.tax.fam;
+    const base = Math.max(0, T - earnedDeduction(T) - 1.5e6 * fam - np * 12 - specialDeduction(T, fam));
+    const calc = progressive(base);
+    const it = taxable < 1060000 ? 0 : f10(Math.max(0, calc - earnedCredit(calc, T)) / 12);
+    const lt = f10(it * 0.1);
+    const total = np + hi + ltc + ei + it + lt;
+    return { np, hi, ltc, ei, it, lt, total, net: gross - total };
+  }
+  function recalcAll() { // 세전으로 넣은 달은 설정이 바뀌면 세후를 다시 계산
+    Object.keys(state.gross).forEach(k => {
+      if (!Array.isArray(state.years[k])) state.years[k] = Array(12).fill(0);
+      state.gross[k].forEach((g, m) => { if (g > 0) state.years[k][m] = deductions(g).net; });
+    });
+  }
+  // 세후 금액에서 세전 금액을 거꾸로 찾음 (이분 탐색)
+  function grossFromNet(net) {
+    if (!net) return 0;
+    let lo = net, hi = net * 2 + 1e6;
+    for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; if (deductions(mid).net < net) lo = mid; else hi = mid; }
+    return Math.ceil(hi / 10) * 10;
+  }
+  const roughWon = n => '약 ' + korean(Math.round(n / 1e4) * 1e4);
+  function renderTax(G, S) {
+    document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.mode === state.inputMode)));
+    const est = !isGross() && !G;            // 세후로 넣어서 세전을 추정하는 경우
+    const g = isGross() ? G : (G || grossFromNet(S));
+    $('annual').innerHTML = g ? `연봉 환산 <b>${roughWon(g * 12)}</b> · 세후 연 ${roughWon(S * 12)}` : '';
+    $('taxBox').hidden = !isGross() && !g;
+    if ($('taxBox').hidden) return;
+    const d = deductions(g);
+    if (est) { $('ded').innerHTML = `<div class="dtot"><span>추정 세전 월급</span><b>${fmt(g)}원</b></div>` +
+      [['국민연금', d.np], ['건강보험', d.hi], ['장기요양보험', d.ltc], ['고용보험', d.ei], ['소득세', d.it], ['지방소득세', d.lt]].map(([n, v]) => `<div><span>+ ${n}</span><b>${fmt(v)}원</b></div>`).join('') +
+      `<div class="dsum"><span>떼이는 돈 합계</span><b>${fmt(d.total)}원</b></div><div><span>입력한 세후 실수령</span><b>${fmt(S)}원</b></div>`; return; }
+    const items = [['국민연금', d.np], ['건강보험', d.hi], ['장기요양보험', d.ltc], ['고용보험', d.ei], ['소득세', d.it], ['지방소득세', d.lt]];
+    $('ded').innerHTML = `<div><span>세전 월급</span><b>${fmt(G)}원</b></div>` +
+      items.map(([n, v]) => `<div><span>− ${n}</span><b>${fmt(v)}원</b></div>`).join('') +
+      `<div class="dsum"><span>공제 합계</span><b>−${fmt(d.total)}원</b></div><div class="dtot"><span>세후 실수령</span><b>${fmt(d.net)}원</b></div>`;
+  }
+
+  const $ = id => document.getElementById(id);
+  const fmt = n => Math.round(n).toLocaleString('ko-KR');
+  const frac = p => String(Math.round(p * 100) / 10000); // 25(%) → "0.25"
+  const parseNum = s => { const n = parseInt(String(s).replace(/[^\d]/g, ''), 10); return isNaN(n) ? 0 : n; };
+  const manwon = n => n >= 10000 ? (Math.round(n / 1000) / 10).toLocaleString('ko-KR') + '만' : n ? fmt(n) : '미입력';
+
+  // 2,537,000 → "253만 7,000원" / 125,000,000 → "1억 2,500만원"
+  function korean(n) {
+    n = Math.round(n);
+    if (n === 0) return '0원';
+    const eok = Math.floor(n / 1e8), man = Math.floor((n % 1e8) / 1e4), rest = n % 1e4;
+    const parts = [];
+    if (eok) parts.push(fmt(eok) + '억');
+    if (man) parts.push(fmt(man) + '만');
+    if (rest) parts.push(fmt(rest));
+    return parts.join(' ') + '원';
+  }
+
+  function nextColor() {
+    const used = new Set(state.cats.map(c => c.color));
+    for (let i = 0; i < COLORS.length; i++) if (!used.has(i)) return i;
+    return state.cats.length % COLORS.length;
+  }
+
+  // 한 달 월급 S를 비율대로 나눔
+  function compute(S) {
+    const unit = 1; // 항상 1원 단위
+    const totalPct = state.cats.reduce((a, c) => a + (Number(c.pct) || 0), 0);
+    const rows = state.cats.map(c => {
+      const exact = S * (Number(c.pct) || 0) / 100;
+      const base = Math.floor(exact / unit) * unit;
+      return { ...c, exact, base, amt: base };
+    });
+    let assigned = rows.reduce((a, r) => a + r.amt, 0);
+    const leftover = Math.floor(S * Math.min(totalPct, 100) / 100) - assigned; // 내림으로 생긴 자투리
+    let spillIdx = -1;
+    if (Math.abs(totalPct - 100) < 1e-9 && leftover > 0 && state.spill >= 0 && state.spill < rows.length) {
+      spillIdx = state.spill; rows[spillIdx].amt += leftover; assigned += leftover;
+    }
+    return { rows, totalPct, unassigned: S - assigned, spillIdx };
+  }
+
+  function computeYear() {
+    const months = SAL().map(S => compute(S));
+    const totals = state.cats.map((c, i) => months.reduce((a, m) => a + m.rows[i].amt, 0));
+    const salaryTotal = SAL().reduce((a, b) => a + b, 0);
+    const unassigned = months.reduce((a, m) => a + Math.max(0, m.unassigned), 0);
+    return { months, totals, salaryTotal, unassigned, totalPct: months[0].totalPct };
+  }
+
+  function renderMonths() {
+    const now = new Date(), cm = state.year === now.getFullYear() ? now.getMonth() : -1;
+    $('yearLabel').textContent = state.year + '년';
+    $('yearNow').hidden = state.year === now.getFullYear();
+    const wd = '일월화수목금토'[now.getDay()];
+    $('todayLine').textContent = `오늘 ${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 (${wd})`;
+    const box = $('months'); box.innerHTML = '';
+    SAL().forEach((S, i) => {
+      const b = document.createElement('button');
+      b.className = 'mon' + (S ? '' : ' empty') + (i === cm ? ' today' : ''); b.id = 'mon-' + i;
+      b.setAttribute('aria-pressed', String(i === state.month));
+      b.innerHTML = `<b>${i + 1}월</b><span>${manwon(S)}</span>`;
+      b.addEventListener('click', () => { state.month = i; if (state.view !== 'month') state.view = 'month'; syncSalary(); renderMonths(); renderResult(); save(); });
+      box.appendChild(b);
+    });
+  }
+
+  function renderCats() {
+    const box = $('cats'); box.innerHTML = '';
+    state.cats.forEach((c, i) => {
+      const el = document.createElement('div'); el.className = 'cat';
+      el.innerHTML = `<span class="dot" style="background:var(${COLORS[c.color]})"></span>
+        <input type="text" id="cat-name-${i}" aria-label="항목 이름" maxlength="20">
+        <div class="pct"><input id="cat-pct-${i}" inputmode="decimal" placeholder="0.25" aria-label="비율"></div>
+        <button class="del" aria-label="삭제" title="삭제">×</button>`;
+      const nameIn = el.querySelector('input[type=text]'), pctIn = el.querySelector('.pct input');
+      nameIn.value = c.name; pctIn.value = frac(c.pct);
+      nameIn.addEventListener('input', () => { c.name = nameIn.value; renderSpill(); renderResult(); save(); });
+      pctIn.addEventListener('input', () => {
+        const v = parseFloat(pctIn.value.replace(/[^\d.]/g, '')); c.pct = isNaN(v) ? 0 : Math.min(v, 1) * 100;
+        renderResult(); save();
+      });
+      pctIn.addEventListener('blur', () => { pctIn.value = frac(c.pct); });
+      el.querySelector('.del').addEventListener('click', () => {
+        state.cats.splice(i, 1);
+        if (state.spill === i) state.spill = Math.max(0, state.cats.length - 1);
+        else if (state.spill > i) state.spill--;
+        renderAll(); save();
+      });
+      box.appendChild(el);
+    });
+  }
+
+  function renderSpill() {
+    const sel = $('spill'); sel.innerHTML = '';
+    state.cats.forEach((c, i) => { const o = document.createElement('option'); o.value = i; o.textContent = (c.name || '이름 없음') + '에 더하기'; sel.appendChild(o); });
+    if (state.spill >= state.cats.length) state.spill = state.cats.length - 1;
+    sel.value = state.spill;
+  }
+
+  function resRow(color, name, pctText, amt, subL, subR, cls) {
+    const el = document.createElement('div'); el.className = 'res' + (cls ? ' ' + cls : '');
+    el.innerHTML = `<span class="dot" style="background:var(${color})"></span><span class="name"></span><span class="amt">${fmt(amt)}원</span>
+      <span class="sub"><span>${subL}</span><span>${subR}</span></span>`;
+    el.querySelector('.name').textContent = name;
+    if (pctText) { const sm = document.createElement('small'); sm.textContent = pctText; el.querySelector('.name').appendChild(sm); }
+    return el;
+  }
+
+  function drawBar(parts, denom) {
+    const bar = $('bar'); bar.innerHTML = '';
+    parts.forEach(p => { if (p.amt > 0) { const d = document.createElement('div'); d.style.width = (p.amt / Math.max(denom, 1) * 100) + '%'; d.style.background = `var(${COLORS[p.color]})`; d.title = `${p.name} ${fmt(p.amt)}원`; bar.appendChild(d); } });
+  }
+
+  function renderResult() {
+    const mi = state.month, S = SAL()[mi];
+    const G = GROSS()[mi];
+    $('salaryLabel').textContent = `${state.year}년 ${mi + 1}월 ${isGross() ? '세전 월급' : '실수령 월급'}`;
+    $('reading').textContent = isGross()
+      ? (G ? `${korean(G)} → 세후 ${korean(S)}` : S ? `세후 ${fmt(S)}원으로 입력돼 있어요. 세전 금액을 넣으면 다시 계산해요` : '이 달 세전 월급을 입력하세요')
+      : (S ? korean(S) + (G ? ` (세전 ${fmt(G)}원에서 계산)` : '') : '이 달 월급을 입력하세요');
+    renderTax(G, S);
+    const year = state.view === 'year';
+    document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === state.view)));
+
+    const totalPct = state.cats.reduce((a, c) => a + (Number(c.pct) || 0), 0);
+    const t = Math.round(totalPct * 100) / 100, diff = 100 - t;
+    $('sum').innerHTML = `<span>합계 <b>${frac(t)}</b></span>` + (t === 100
+      ? '<span class="pill ok">1 딱 맞음</span>'
+      : t < 100 ? `<span class="pill bad">${frac(diff)} 남음</span>` : `<span class="pill bad">${frac(-diff)} 초과</span>`);
+
+    const box = $('results'); box.innerHTML = '';
+    if (!year) {
+      const { rows, unassigned, spillIdx } = compute(S);
+      $('totalLabel').textContent = `${state.year}년 ${mi + 1}월 통장별 이체 금액`;
+      $('totalBig').textContent = fmt(S) + '원';
+      drawBar(rows, S);
+      rows.forEach((r, i) => {
+        const extra = i === spillIdx && r.amt !== r.base ? ' · 자투리 포함' : '';
+        box.appendChild(resRow(COLORS[r.color], r.name || '이름 없음', '× ' + frac(r.pct), r.amt, korean(r.amt) + extra, ''));
+      });
+      if (unassigned > 0 && totalPct < 100) box.appendChild(resRow('--line', '아직 안 나눈 돈', '', unassigned, '비율 합계를 1로 맞춰 주세요', '', 'unassigned'));
+      $('yearTableBox').hidden = true;
+    } else {
+      const Y = computeYear();
+      const filled = SAL().filter(x => x > 0).length;
+      $('totalLabel').textContent = `${state.year}년 1~12월 통장별 이체 합계`;
+      $('totalBig').textContent = fmt(Y.salaryTotal) + '원';
+      drawBar(state.cats.map((c, i) => ({ ...c, amt: Y.totals[i] })), Y.salaryTotal);
+      state.cats.forEach((c, i) => {
+        box.appendChild(resRow(COLORS[c.color], c.name || '이름 없음', '× ' + frac(c.pct), Y.totals[i], korean(Y.totals[i]), '월평균 ' + korean(Y.totals[i] / 12)));
+      });
+      if (Y.unassigned > 0 && totalPct < 100) box.appendChild(resRow('--line', '아직 안 나눈 돈', '', Y.unassigned, '비율 합계를 1로 맞춰 주세요', '', 'unassigned'));
+      renderTable(Y);
+      $('yearTableBox').hidden = false;
+      if (filled < 12) { $('note').textContent = `${12 - filled}개 달은 월급이 비어 있어서 0원으로 계산했어요.`; return; }
+    }
+    $('note').textContent = totalPct > 100
+      ? '비율 합계가 1을 넘어서 월급보다 많은 금액이 나옵니다. 비율을 줄여 주세요.'
+      : '';
+  }
+
+  function renderTable(Y) {
+    const tb = $('yearTable');
+    const head = '<thead><tr><th>달</th><th>월급</th>' + state.cats.map(c => `<th><span class="dot" style="background:var(${COLORS[c.color]})"></span><span class="cn"></span></th>`).join('') + '</tr></thead>';
+    const body = '<tbody>' + Y.months.map((m, mi) => {
+      const S = SAL()[mi];
+      return `<tr data-m="${mi}" class="${mi === state.month ? 'cur' : ''}${mi === new Date().getMonth() && state.year === new Date().getFullYear() ? ' today' : ''}"><td>${mi + 1}월</td><td class="${S ? '' : 'zero'}">${fmt(S)}</td>` +
+        m.rows.map(r => `<td class="${r.amt ? '' : 'zero'}">${fmt(r.amt)}</td>`).join('') + '</tr>';
+    }).join('') + '</tbody>';
+    const foot = `<tfoot><tr><td>합계</td><td>${fmt(Y.salaryTotal)}</td>` + Y.totals.map(v => `<td>${fmt(v)}</td>`).join('') + '</tr></tfoot>';
+    tb.innerHTML = head + body + foot;
+    tb.querySelectorAll('th .cn').forEach((el, i) => el.textContent = state.cats[i].name || '이름 없음');
+    tb.querySelectorAll('tbody tr').forEach(tr => tr.addEventListener('click', () => {
+      state.month = Number(tr.dataset.m); state.view = 'month'; syncSalary(); renderMonths(); renderResult(); save();
+    }));
+  }
+
+  function renderAll() { renderMonths(); renderCats(); renderSpill(); renderResult(); }
+
+  // 월급 입력
+  const salaryIn = $('salary');
+  const curInput = () => isGross() ? GROSS()[state.month] : SAL()[state.month];
+  function syncSalary() { const S = curInput(); salaryIn.value = S ? fmt(S) : ''; salaryIn.placeholder = isGross() ? '세전 금액' : '0'; }
+  function setSalary(v) {
+    v = Math.max(0, Math.min(v, 99999999999));
+    if (isGross()) { GROSS()[state.month] = v; SAL()[state.month] = v ? deductions(v).net : 0; }
+    else { SAL()[state.month] = v; GROSS()[state.month] = 0; }
+  }
+  function updateMonthChip() {
+    const b = $('mon-' + state.month); if (!b) return;
+    const S = SAL()[state.month];
+    b.classList.toggle('empty', !S); b.querySelector('span').textContent = manwon(S);
+  }
+  salaryIn.addEventListener('input', () => {
+    const pos = salaryIn.value.length - salaryIn.selectionStart;
+    setSalary(parseNum(salaryIn.value));
+    syncSalary();
+    const p = Math.max(0, salaryIn.value.length - pos); salaryIn.setSelectionRange(p, p);
+    updateMonthChip(); renderResult(); save();
+  });
+  document.querySelectorAll('[data-add]').forEach(b => b.addEventListener('click', () => {
+    setSalary(curInput() + Number(b.dataset.add)); syncSalary(); updateMonthChip(); renderResult(); save();
+  }));
+  document.querySelector('[data-clear]').addEventListener('click', () => { setSalary(0); syncSalary(); salaryIn.focus(); updateMonthChip(); renderResult(); save(); });
+  if ($('copyPrev')) $('copyPrev').addEventListener('click', () => {
+    const prev = (state.month + 11) % 12;
+    const py = String(state.month === 0 ? state.year - 1 : state.year);
+    SAL()[state.month] = (state.years[py] || [])[prev] || 0; GROSS()[state.month] = (state.gross[py] || [])[prev] || 0;
+    syncSalary(); updateMonthChip(); renderResult(); save();
+    flash(`${prev + 1}월 금액을 가져왔어요`);
+  });
+
+  // 덮어쓰는 버튼은 두 번 눌러야 실행
+  function armed(btn, label, armedLabel, action) {
+    let on = false, timer;
+    btn.addEventListener('click', () => {
+      if (!on) { on = true; btn.textContent = armedLabel; btn.classList.add('armed'); timer = setTimeout(() => { on = false; btn.textContent = label; btn.classList.remove('armed'); }, 3000); return; }
+      clearTimeout(timer); on = false; btn.textContent = label; btn.classList.remove('armed'); action();
+    });
+  }
+  if ($('fillAll')) armed($('fillAll'), '12달 모두 이 금액으로', '한 번 더 누르면 12달 덮어쓰기', () => {
+    const S = SAL()[state.month]; state.years[String(state.year)] = Array(12).fill(S); state.gross[String(state.year)] = Array(12).fill(GROSS()[state.month]); renderMonths(); renderResult(); save();
+    flash(`12달 모두 ${fmt(S)}원으로 넣었어요`);
+  });
+  armed($('reset'), '처음 설정으로', '한 번 더 누르면 초기화', () => {
+    const view = state.view; state = defaults(); state.view = view;
+    syncSalary(); $('nontax').value = fmt(state.tax.nontax); $('fam').value = state.tax.fam; renderAll(); save(); flash('처음 설정으로 돌렸어요');
+  });
+
+  document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
+    state.cats = fromPreset(b.dataset.preset);
+    state.spill = state.cats.findIndex(c => c.name.startsWith('생활비')); if (state.spill < 0) state.spill = state.cats.length - 1;
+    renderAll(); save();
+  }));
+  $('addCat').addEventListener('click', () => {
+    state.cats.push({ name: '새 항목', pct: 0, color: nextColor() }); renderAll(); save();
+    const inputs = document.querySelectorAll('.cat input[type=text]'); const last = inputs[inputs.length - 1]; if (last) { last.focus(); last.select(); }
+  });
+  document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => { state.view = b.dataset.view; renderResult(); save(); }));
+  document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { state.inputMode = b.dataset.mode; syncSalary(); renderResult(); save(); }));
+  const nontaxIn = $('nontax'); nontaxIn.value = fmt(state.tax.nontax);
+  nontaxIn.addEventListener('input', () => { state.tax.nontax = Math.min(parseNum(nontaxIn.value), 9999999); nontaxIn.value = fmt(state.tax.nontax); recalcAll(); renderMonths(); renderResult(); save(); });
+  $('fam').value = state.tax.fam;
+  $('fam').addEventListener('change', e => { state.tax.fam = Number(e.target.value); recalcAll(); renderMonths(); renderResult(); save(); });
+  const goYear = y => { state.year = y; syncSalary(); renderMonths(); renderResult(); save(); };
+  $('yearPrev').addEventListener('click', () => goYear(state.year - 1));
+  $('yearNext').addEventListener('click', () => goYear(state.year + 1));
+  $('yearNow').addEventListener('click', () => { state.month = new Date().getMonth(); goYear(new Date().getFullYear()); });
+  $('spill').addEventListener('change', e => { state.spill = Number(e.target.value); renderResult(); save(); });
+
+  function flash(msg) { $('toast').textContent = msg; clearTimeout(flash.t); flash.t = setTimeout(() => $('toast').textContent = '', 2500); }
+  $('copy').addEventListener('click', () => {
+    let text;
+    if (state.view === 'year') {
+      const Y = computeYear();
+      text = `${state.year}년 1~12월 월급 합계 ${fmt(Y.salaryTotal)}원 연간 이체\n` + state.cats.map((c, i) => `· ${c.name} (×${frac(c.pct)}): ${fmt(Y.totals[i])}원`).join('\n');
+      text += '\n\n[달별]\n' + Y.months.map((m, mi) => `${mi + 1}월 (${fmt(SAL()[mi])}원): ` + m.rows.map(r => `${r.name} ${fmt(r.amt)}`).join(' / ')).join('\n');
+    } else {
+      const S = SAL()[state.month], { rows, unassigned, totalPct } = compute(S);
+      text = `${state.year}년 ${state.month + 1}월 월급 ${GROSS()[state.month] ? `세전 ${fmt(GROSS()[state.month])}원 → 세후 ` : ''}${fmt(S)}원 이체\n` + rows.map(r => `· ${r.name} (×${frac(r.pct)}): ${fmt(r.amt)}원`).join('\n');
+      if (unassigned > 0 && totalPct < 100) text += `\n· 미배정: ${fmt(unassigned)}원`;
+    }
+    const fb = $('fallback');
+    const fallback = () => { fb.hidden = false; fb.value = text; fb.focus(); fb.select(); flash('아래 글을 길게 눌러 복사하세요'); };
+    try { navigator.clipboard.writeText(text).then(() => { fb.hidden = true; flash('복사했어요. 메모나 카톡에 붙여넣으세요'); }, fallback); } catch (e) { fallback(); }
+  });
+
+  recalcAll();
+  syncSalary();
+  renderAll();
+
+  // 다른 기기(또는 설정 코드)에서 온 설정을 화면에 반영
+  function applySynced(data, updatedAt) {
+    SYNC_KEYS.forEach(k => { if (data[k] !== undefined) state[k] = JSON.parse(JSON.stringify(data[k])); });
+    state.tax = Object.assign({ nontax: 200000, fam: 1 }, state.tax);
+    if (!state.years || typeof state.years !== 'object') state.years = {};
+    state.updatedAt = updatedAt; lastSynced = JSON.stringify(pick());
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+    state.unit = 1;
+    syncSalary(); $('nontax').value = fmt(state.tax.nontax); $('fam').value = state.tax.fam;
+    renderAll();
+  }
+  (async () => {
+    if (!window.claude || typeof window.claude.use !== 'function') return; // 독립 사이트: 이 기기에만 저장
+    setSync('busy', '동기화 연결 중…');
+    const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+    const uid = user ? await user.id() : null;
+    if (!db) { setSync('local', '이 기기에만 저장'); return; }
+    // owner/settings: 주인만 읽고 쓰는 자리. Claude(클로드 코드)도 주인 권한으로 읽을 수 있음
+    remoteRef = db.doc('owner/settings');
+    // 예전 버전(개인 전용 자리)에 저장된 게 더 최신이면 가져옴
+    if (uid) { try { const l = await db.doc('data/users/' + uid + '/settings').get(); const d = l.exists ? l.data() : null;
+      if (d && Array.isArray(d.cats) && (d.updatedAt || 0) > (state.updatedAt || 0)) applySynced(d, d.updatedAt); } catch (e) {} }
+    const timer = setTimeout(() => { if (!syncReady) setSync('err', '동기화 연결 안 됨 · 이 기기에 저장 중'); }, 10000);
+    remoteRef.onSnapshot(snap => {
+      if (snap.metadata.fromCache && !syncReady) return;
+      const remote = snap.exists ? snap.data() : null;
+      if (!syncReady) {
+        syncReady = true; clearTimeout(timer);
+        if (remote && Array.isArray(remote.cats) && (remote.updatedAt || 0) > (state.updatedAt || 0)) { applySynced(remote, remote.updatedAt); setSync('ok', '모든 기기에 동기화됨'); }
+        else if (!remote || JSON.stringify(SYNC_KEYS.map(k => remote[k])) !== JSON.stringify(SYNC_KEYS.map(k => state[k]))) { if (!state.updatedAt) state.updatedAt = Date.now(); pushNow(); }
+        else setSync('ok', '모든 기기에 동기화됨');
+        return;
+      }
+      if (remote && remote.by !== clientId && Array.isArray(remote.cats) && (remote.updatedAt || 0) > (state.updatedAt || 0)) {
+        applySynced(remote, remote.updatedAt); setSync('ok', '모든 기기에 동기화됨'); flash('다른 기기에서 바꾼 내용을 불러왔어요');
+      }
+    }, () => { clearTimeout(timer); syncReady = false; remoteRef = null; setSync('err', '동기화 끊김 · 이 기기에 저장 중'); });
+  })();
+
+  // 설정 코드 내보내기 / 가져오기
+  $('exportCode').addEventListener('click', () => {
+    const code = 'SPLIT1:' + btoa(unescape(encodeURIComponent(JSON.stringify(pick()))));
+    const fb = $('importCode');
+    const fallback = () => { fb.value = code; fb.focus(); fb.select(); flash('아래 코드를 길게 눌러 복사하세요'); };
+    try { navigator.clipboard.writeText(code).then(() => flash('설정 코드를 복사했어요. 다른 기기에 붙여넣으세요'), fallback); } catch (e) { fallback(); }
+  });
+  armed($('importBtn'), '붙여넣은 코드 적용', '한 번 더 누르면 지금 설정을 덮어쓰기', () => {
+    try {
+      const raw = $('importCode').value.trim().replace(/^SPLIT1:/, '');
+      const data = JSON.parse(decodeURIComponent(escape(atob(raw))));
+      if (!Array.isArray(data.cats)) throw new Error('bad');
+      applySynced(data, Date.now()); lastSynced = ''; save(); $('importCode').value = '';
+      flash('설정 코드를 적용했어요');
+    } catch (e) { flash('코드를 읽지 못했어요. 처음부터 끝까지 다 복사했는지 확인해 주세요'); }
+  });
+  // 날짜가 바뀌면 오늘 표시를 다시 그림
+  let lastDay = new Date().toDateString();
+  setInterval(() => {
+    const now = new Date(), d = now.toDateString();
+    if (d === lastDay) return;
+    const prevYear = new Date(lastDay).getFullYear(); lastDay = d;
+    // 새해가 되면 올해 칸(빈 1~12월)으로 넘어감. 지난해 기록은 그대로 남음
+    if (now.getFullYear() !== prevYear && state.year === prevYear) { state.year = now.getFullYear(); state.month = now.getMonth(); syncSalary(); save(); }
+    renderMonths(); renderResult();
+  }, 60000);
+})();
+</script>
+
+</body>
+</html>
