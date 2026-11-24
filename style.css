@@ -294,3 +294,11 @@ label.row input { width: auto; margin: 0; }
   .w-calendar { grid-template-columns: 1fr; }
   .today-photo { aspect-ratio: 2 / 1; }
 }
+
+/* 확인 창 */
+.modal.ask { z-index: 55; align-items: center; padding: 16px; }
+.ask-card { width: 100%; max-width: 340px; background: #fff; border-radius: 24px; padding: 22px 18px 18px; animation: up .18s ease-out; }
+.ask-card p { margin: 0; white-space: pre-line; line-height: 1.6; text-align: center; font-weight: 500; }
+.ask-card .modal-btns { grid-template-columns: 1fr 1fr; }
+.ask-card .btn { background: #f1f2f5; box-shadow: none; }
+.ask-card .btn.primary { background: #1d1d22; color: #fff; }

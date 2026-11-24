@@ -287,6 +287,21 @@
     const first = $("#modalFields input:not([type=hidden]), #modalFields textarea");
     if (first && first.type !== "date") setTimeout(() => first.focus(), 50);
   }
+  // 브라우저 confirm() 대신 쓰는 확인 창 (일부 환경에서 confirm이 막혀 있음)
+  function ask(message, okText = "확인") {
+    return new Promise((resolve) => {
+      const box = $("#askBox");
+      $("#askMsg").textContent = message;
+      $("#askOk").textContent = okText;
+      box.classList.remove("hidden");
+      const done = (v) => { box.classList.add("hidden"); box.onclick = null; resolve(v); };
+      box.onclick = (e) => {
+        if (e.target.id === "askOk") done(true);
+        else if (e.target.id === "askCancel" || e.target === box) done(false);
+      };
+    });
+  }
+
   function closeForm() { $("#modal").classList.add("hidden"); formSubmit = null; }
 
   function fieldHTML(f) {
@@ -961,7 +976,7 @@
       // 수정 시 삭제 버튼 제공
       const del = document.createElement("button");
       del.type = "button"; del.className = "btn danger full"; del.textContent = "이 지출 삭제"; del.style.marginTop = "10px";
-      del.onclick = () => { if (confirm("이 지출을 지울까요?")) { closeForm(); store.remove("expenses", x.id); } };
+      del.onclick = async () => { closeForm(); if (await ask("이 지출을 지울까요?", "삭제")) store.remove("expenses", x.id); };
       $("#modalFields").appendChild(del);
     }
   }
@@ -1003,8 +1018,8 @@
     },
     "mood-other": () => toast("상대의 기분은 상대가 골라요 😉"),
 
-    del: (el) => {
-      if (el.dataset.confirm && !confirm(el.dataset.confirm)) return;
+    del: async (el) => {
+      if (el.dataset.confirm && !(await ask(el.dataset.confirm, "삭제"))) return;
       store.remove(el.dataset.coll, el.dataset.id);
     },
 
@@ -1083,15 +1098,15 @@
       }
     },
     "share-reset": async () => {
-      if (!confirm("상대 기기의 연결을 끊고 새 초대 코드를 만들까요?\n(상대가 폰을 바꿨거나 앱 데이터를 지웠을 때 사용해요)")) return;
+      if (!(await ask("상대 기기의 연결을 끊고 새 초대 코드를 만들까요?\n(상대가 폰을 바꿨거나 앱 데이터를 지웠을 때 사용해요)", "새 코드 만들기"))) return;
       try {
         const s = await sync();
         session.code = await s.resetInvite(session.roomId, role());
         saveSession(); render();
       } catch (err) { console.error(err); toast("실패했어요. 인터넷 연결을 확인해주세요."); }
     },
-    "share-leave": () => {
-      if (!confirm("이 기기에서 연결을 끊을까요?\n데이터는 상대 기기와 서버에 그대로 남아요. 다시 연결하려면 상대에게 새 초대 코드를 받아야 해요.")) return;
+    "share-leave": async () => {
+      if (!(await ask("이 기기에서 연결을 끊을까요?\n데이터는 상대 기기와 서버에 그대로 남아요. 다시 연결하려면 상대에게 새 초대 코드를 받아야 해요.", "연결 끊기"))) return;
       disconnectLocal();
     },
     export: () => {
@@ -1102,11 +1117,11 @@
       a.click();
       URL.revokeObjectURL(a.href);
     },
-    reset: () => {
+    reset: async () => {
       const msg = shared()
         ? "이 기기의 데이터를 지우고 연결을 끊을까요?\n(서버와 상대 기기의 데이터는 남아있어요)"
         : "정말 모든 데이터를 지울까요? 되돌릴 수 없어요.";
-      if (!confirm(msg)) return;
+      if (!(await ask(msg, "초기화"))) return;
       disconnectLocal();
     },
   };
@@ -1131,8 +1146,8 @@
   });
 
   $("#viewerClose").addEventListener("click", () => $("#viewer").classList.add("hidden"));
-  $("#viewerDel").addEventListener("click", () => {
-    if (!confirm("이 사진을 지울까요?")) return;
+  $("#viewerDel").addEventListener("click", async () => {
+    if (!(await ask("이 사진을 지울까요?", "삭제"))) return;
     store.remove("photos", viewing);
     $("#viewer").classList.add("hidden");
   });
