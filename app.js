@@ -1550,6 +1550,14 @@
     else if (Math.hypot(t.clientX - press.x0, t.clientY - press.y0) > 10) pressCancel(); // 스크롤하려는 것
   }, { passive: false });
   document.addEventListener("touchend", pressEnd);
+
+  // 블럭이 한 화면에 다 들어가면 홈 화면이 끌려 움직이지 않게 (CSS를 지원하지 않는 옛 iOS용)
+  document.addEventListener("touchmove", (e) => {
+    if (press && press.dragging) return;
+    if (!$("#page").classList.contains("hidden") || !$("#modal").classList.contains("hidden")) return;
+    if (e.target.closest && e.target.closest(".page-body, .modal-card, .viewer, textarea, select")) return;
+    if (document.documentElement.scrollHeight <= innerHeight + 1 && e.cancelable) e.preventDefault();
+  }, { passive: false });
   document.addEventListener("touchcancel", pressEnd);
 
   // 마우스 (PC)
