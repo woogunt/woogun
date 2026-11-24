@@ -149,6 +149,19 @@ select { font-family: inherit; font-size: 0.9rem; padding: 7px 8px; border: 1px 
 .res .amt { font-family: var(--font-num); font-size: 1.15rem; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
 .res .sub { grid-column: 2 / 4; display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 0.8rem; }
 .res.unassigned .name, .res.unassigned .amt { color: var(--warn); }
+.res.actsum .name, .res.actsum .amt { color: var(--muted); }
+/* 실제 금액 입력 줄 */
+.catwrap { display: flex; flex-direction: column; gap: 6px; padding-bottom: 10px; border-bottom: 1px dashed var(--line); }
+.catwrap:last-child { border-bottom: 0; }
+.act { display: grid; grid-template-columns: 12px auto minmax(0, 150px) minmax(0, 1fr); gap: 6px 10px; align-items: center; font-size: 0.8rem; color: var(--muted); }
+.act label { white-space: nowrap; }
+.act .pct span { color: var(--muted); font-size: 0.8rem; }
+.diff { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; overflow-wrap: anywhere; }
+.diff.none { font-weight: 400; color: var(--muted); }
+.diff.same { color: var(--ok); }
+.diff.more { color: var(--warn); }
+.diff.less { color: var(--c2); }
+@media (max-width: 420px) { .act { grid-template-columns: 12px auto minmax(0, 1fr); } .act .diff { grid-column: 2 / 4; text-align: left; } }
 
 .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
 table { border-collapse: collapse; width: 100%; font-size: 0.82rem; }
@@ -301,8 +314,9 @@ button, select { -webkit-tap-highlight-color: transparent; touch-action: manipul
     '503020': [['고정비·필수', 50], ['생활비·여가', 30], ['저축·투자', 20]],
     save:   [['저축', 40], ['투자', 20], ['고정비', 20], ['생활비', 15], ['비상금', 5]],
   };
-  const fromPreset = p => PRESETS[p].map(([name, pct], i) => ({ name, pct, color: i % COLORS.length }));
-  const defaults = () => ({ years: { [new Date().getFullYear()]: Array(12).fill(2500000) }, year: new Date().getFullYear(), month: new Date().getMonth(), cats: fromPreset('mine'), unit: 1, spill: 0, preset2: true, view: 'month', gross: {}, inputMode: 'net', tax: { nontax: 200000, fam: 1 } });
+  const newId = () => 'c' + Math.random().toString(36).slice(2, 9);
+  const fromPreset = p => PRESETS[p].map(([name, pct], i) => ({ id: newId(), name, pct, color: i % COLORS.length }));
+  const defaults = () => ({ years: { [new Date().getFullYear()]: Array(12).fill(2500000) }, year: new Date().getFullYear(), month: new Date().getMonth(), cats: fromPreset('mine'), unit: 1, spill: 0, preset2: true, actual: {}, view: 'month', gross: {}, inputMode: 'net', tax: { nontax: 200000, fam: 1 } });
 
   let state = defaults();
   try {
@@ -318,6 +332,7 @@ button, select { -webkit-tap-highlight-color: transparent; touch-action: manipul
       state = Object.assign(state, s);
       state.year = Y0; // 열 때는 항상 올해로
       state.tax = Object.assign({ nontax: 200000, fam: 1 }, state.tax);
+      state.actual = state.actual || {};
       state.unit = 1;
       // 기본틀 비율을 한 번 바로 적용 (이후 사용자가 바꾼 비율은 유지)
       if (!s.preset2) { state.cats = fromPreset('mine'); state.spill = 0; state.preset2 = true; state.updatedAt = Math.max(state.updatedAt || 0, 1795498300000); /* 기본틀 적용 시점: 이후 다른 기기에서 바꾼 값이 있으면 그게 우선 */ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
@@ -328,7 +343,8 @@ button, select { -webkit-tap-highlight-color: transparent; touch-action: manipul
   const save = () => { onLocalChange(); try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
 
   // ── 기기 간 동기화: 같은 claude.ai 계정이면 PC·휴대폰이 같은 설정을 봄 ──
-  const SYNC_KEYS = ['cats', 'years', 'unit', 'spill', 'tax'];
+  state.cats.forEach(c => { if (!c.id) c.id = newId(); });
+  const SYNC_KEYS = ['cats', 'years', 'unit', 'spill', 'tax', 'actual'];
   const clientId = Math.random().toString(36).slice(2);
   const pick = () => { const o = {}; SYNC_KEYS.forEach(k => o[k] = state[k]); return o; };
   let lastSynced = JSON.stringify(pick()), remoteRef = null, syncReady = false, pushTimer = null, writing = false, pendingPush = false;
@@ -496,12 +512,21 @@ button, select { -webkit-tap-highlight-color: transparent; touch-action: manipul
   function renderCats() {
     const box = $('cats'); box.innerHTML = '';
     state.cats.forEach((c, i) => {
-      const el = document.createElement('div'); el.className = 'cat';
-      el.innerHTML = `<span class="dot" style="background:var(${COLORS[c.color]})"></span>
+      const el = document.createElement('div'); el.className = 'catwrap';
+      el.innerHTML = `<div class="cat"><span class="dot" style="background:var(${COLORS[c.color]})"></span>
         <input type="text" id="cat-name-${i}" aria-label="항목 이름" maxlength="20">
         <div class="pct"><input id="cat-pct-${i}" inputmode="decimal" placeholder="0.25" aria-label="비율"></div>
-        <button class="del" aria-label="삭제" title="삭제">×</button>`;
-      const nameIn = el.querySelector('input[type=text]'), pctIn = el.querySelector('.pct input');
+        <button class="del" aria-label="삭제" title="삭제">×</button></div>
+        <div class="act"><span></span><label for="cat-act-${i}" class="act-label">실제</label>
+          <div class="pct"><input id="cat-act-${i}" inputmode="numeric" autocomplete="off" placeholder="실제로 보낸 돈"><span>원</span></div>
+          <span class="diff none" id="cat-diff-${i}"></span></div>`;
+      const nameIn = el.querySelector('input[type=text]'), pctIn = el.querySelector('.cat .pct input'), actIn = el.querySelector('.act input');
+      actIn.addEventListener('input', () => {
+        const raw = actIn.value.replace(/[^\d]/g, '');
+        ACT(c.id)[state.month] = raw === '' ? null : Math.min(parseInt(raw, 10), 99999999999);
+        renderResult(); save();
+      });
+      actIn.addEventListener('blur', () => { const v = ACT(c.id)[state.month]; actIn.value = v == null ? '' : fmt(v); });
       nameIn.value = c.name; pctIn.value = frac(c.pct);
       nameIn.addEventListener('input', () => { c.name = nameIn.value; renderSpill(); renderResult(); save(); });
       pctIn.addEventListener('input', () => {
@@ -524,6 +549,30 @@ button, select { -webkit-tap-highlight-color: transparent; touch-action: manipul
     state.cats.forEach((c, i) => { const o = document.createElement('option'); o.value = i; o.textContent = (c.name || '이름 없음') + '에 더하기'; sel.appendChild(o); });
     if (state.spill >= state.cats.length) state.spill = state.cats.length - 1;
     sel.value = state.spill;
+  }
+
+  // 실제로 쪼갠 돈: actual[연도][항목id] = 12달 배열 (null = 입력 안 함)
+  function ACT(id) {
+    const y = String(state.year); state.actual[y] = state.actual[y] || {};
+    if (!Array.isArray(state.actual[y][id])) state.actual[y][id] = Array(12).fill(null);
+    return state.actual[y][id];
+  }
+  function diffInfo(plan, act) {
+    if (act == null) return { cls: 'none', text: '' };
+    const d = act - plan;
+    if (d === 0) return { cls: 'same', text: '계획대로' };
+    const pct = plan ? ` (${d > 0 ? '+' : '−'}${Math.round(Math.abs(d) / plan * 100)}%)` : '';
+    return d > 0 ? { cls: 'more', text: `+${fmt(d)}원 많음${pct}` } : { cls: 'less', text: `−${fmt(-d)}원 적음${pct}` };
+  }
+  function updateActLines(rows) {
+    state.cats.forEach((c, i) => {
+      const inp = $('cat-act-' + i), dl = $('cat-diff-' + i); if (!inp || !dl) return;
+      const a = ACT(c.id)[state.month], plan = rows[i] ? rows[i].amt : 0, info = diffInfo(plan, a);
+      inp.closest('.act').querySelector('.act-label').textContent = `${state.month + 1}월 실제`;
+      if (document.activeElement !== inp) inp.value = a == null ? '' : fmt(a);
+      dl.className = 'diff ' + info.cls;
+      dl.textContent = a == null ? `계획 ${fmt(plan)}원` : info.text;
+    });
   }
 
   function resRow(color, name, pctText, amt, subL, subR, cls) {
@@ -563,10 +612,16 @@ button, select { -webkit-tap-highlight-color: transparent; touch-action: manipul
       $('totalLabel').textContent = `${state.year}년 ${mi + 1}월 통장별 이체 금액`;
       $('totalBig').textContent = fmt(S) + '원';
       drawBar(rows, S);
+      let actSum = 0, actAny = false;
       rows.forEach((r, i) => {
         const extra = i === spillIdx && r.amt !== r.base ? ' · 자투리 포함' : '';
-        box.appendChild(resRow(COLORS[r.color], r.name || '이름 없음', '× ' + frac(r.pct), r.amt, korean(r.amt) + extra, ''));
+        const a = ACT(state.cats[i].id)[mi], info = diffInfo(r.amt, a);
+        if (a != null) { actSum += a; actAny = true; }
+        const right = a == null ? '' : `실제 ${fmt(a)}원 · <span class="diff ${info.cls}">${info.text}</span>`;
+        box.appendChild(resRow(COLORS[r.color], r.name || '이름 없음', '× ' + frac(r.pct), r.amt, korean(r.amt) + extra, right));
       });
+      if (actAny) box.appendChild(resRow('--line', '실제로 쪼갠 돈 합계', '', actSum, `월급 ${fmt(S)}원 중`, S - actSum >= 0 ? `남은 돈 ${fmt(S - actSum)}원` : `월급보다 ${fmt(actSum - S)}원 많음`, 'actsum'));
+      updateActLines(rows);
       if (unassigned > 0 && totalPct < 100) box.appendChild(resRow('--line', '아직 안 나눈 돈', '', unassigned, '비율 합계를 1로 맞춰 주세요', '', 'unassigned'));
       $('yearTableBox').hidden = true;
     } else {
@@ -576,8 +631,14 @@ button, select { -webkit-tap-highlight-color: transparent; touch-action: manipul
       $('totalBig').textContent = fmt(Y.salaryTotal) + '원';
       drawBar(state.cats.map((c, i) => ({ ...c, amt: Y.totals[i] })), Y.salaryTotal);
       state.cats.forEach((c, i) => {
-        box.appendChild(resRow(COLORS[c.color], c.name || '이름 없음', '× ' + frac(c.pct), Y.totals[i], korean(Y.totals[i]), '월평균 ' + korean(Y.totals[i] / 12)));
+        // 실제를 입력한 달만 모아서 계획과 비교
+        const arr = ACT(c.id); let aSum = 0, pSum = 0, n = 0;
+        arr.forEach((a, m) => { if (a != null) { aSum += a; pSum += Y.months[m].rows[i].amt; n++; } });
+        const info = diffInfo(pSum, n ? aSum : null);
+        const right = n ? `실제 ${n}달 ${korean(aSum)} · <span class="diff ${info.cls}">${info.text}</span>` : '월평균 ' + korean(Y.totals[i] / 12);
+        box.appendChild(resRow(COLORS[c.color], c.name || '이름 없음', '× ' + frac(c.pct), Y.totals[i], korean(Y.totals[i]), right));
       });
+      updateActLines(compute(S).rows);
       if (Y.unassigned > 0 && totalPct < 100) box.appendChild(resRow('--line', '아직 안 나눈 돈', '', Y.unassigned, '비율 합계를 1로 맞춰 주세요', '', 'unassigned'));
       renderTable(Y);
       $('yearTableBox').hidden = false;
@@ -662,7 +723,7 @@ button, select { -webkit-tap-highlight-color: transparent; touch-action: manipul
     renderAll(); save();
   }));
   $('addCat').addEventListener('click', () => {
-    state.cats.push({ name: '새 항목', pct: 0, color: nextColor() }); renderAll(); save();
+    state.cats.push({ id: newId(), name: '새 항목', pct: 0, color: nextColor() }); renderAll(); save();
     const inputs = document.querySelectorAll('.cat input[type=text]'); const last = inputs[inputs.length - 1]; if (last) { last.focus(); last.select(); }
   });
   document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => { state.view = b.dataset.view; renderResult(); save(); }));
@@ -686,7 +747,7 @@ button, select { -webkit-tap-highlight-color: transparent; touch-action: manipul
       text += '\n\n[달별]\n' + Y.months.map((m, mi) => `${mi + 1}월 (${fmt(SAL()[mi])}원): ` + m.rows.map(r => `${r.name} ${fmt(r.amt)}`).join(' / ')).join('\n');
     } else {
       const S = SAL()[state.month], { rows, unassigned, totalPct } = compute(S);
-      text = `${state.year}년 ${state.month + 1}월 월급 ${GROSS()[state.month] ? `세전 ${fmt(GROSS()[state.month])}원 → 세후 ` : ''}${fmt(S)}원 이체\n` + rows.map(r => `· ${r.name} (×${frac(r.pct)}): ${fmt(r.amt)}원`).join('\n');
+      text = `${state.year}년 ${state.month + 1}월 월급 ${GROSS()[state.month] ? `세전 ${fmt(GROSS()[state.month])}원 → 세후 ` : ''}${fmt(S)}원 이체\n` + rows.map((r, i) => { const a = ACT(state.cats[i].id)[state.month]; return `· ${r.name} (×${frac(r.pct)}): ${fmt(r.amt)}원` + (a == null ? '' : ` → 실제 ${fmt(a)}원 (${diffInfo(r.amt, a).text})`); }).join('\n');
       if (unassigned > 0 && totalPct < 100) text += `\n· 미배정: ${fmt(unassigned)}원`;
     }
     const fb = $('fallback');
@@ -702,6 +763,7 @@ button, select { -webkit-tap-highlight-color: transparent; touch-action: manipul
   function applySynced(data, updatedAt) {
     SYNC_KEYS.forEach(k => { if (data[k] !== undefined) state[k] = JSON.parse(JSON.stringify(data[k])); });
     state.tax = Object.assign({ nontax: 200000, fam: 1 }, state.tax);
+    state.actual = state.actual || {}; state.cats.forEach(c => { if (!c.id) c.id = newId(); });
     if (!state.years || typeof state.years !== 'object') state.years = {};
     state.updatedAt = updatedAt; lastSynced = JSON.stringify(pick());
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
