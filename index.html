@@ -242,7 +242,7 @@ button, select { -webkit-tap-highlight-color: transparent; touch-action: manipul
         <div class="row" style="justify-content:space-between;flex-wrap:wrap">
           <span class="label">나누는 비율 (합계 1, 모든 달 공통)</span>
           <div class="chips">
-            <button class="chip" data-preset="mine">기본 5통장</button>
+            <button class="chip" data-preset="mine">기본틀</button>
             <button class="chip" data-preset="503020">50/30/20 법칙</button>
             <button class="chip" data-preset="save">저축 집중</button>
           </div>
@@ -297,12 +297,12 @@ button, select { -webkit-tap-highlight-color: transparent; touch-action: manipul
   const KEY = 'salary-split-v1';
   const COLORS = ['--c1','--c2','--c3','--c4','--c5','--c6','--c7','--c8'];
   const PRESETS = {
-    mine:   [['투자', 25], ['저축', 25], ['고정비', 25], ['생활비', 20], ['비상금', 5]],
+    mine:   [['생활비(고정비 포함)', 50], ['자유지출', 5], ['단기목표', 15], ['빚 갚기', 10], ['장투', 20]], // 기본틀
     '503020': [['고정비·필수', 50], ['생활비·여가', 30], ['저축·투자', 20]],
     save:   [['저축', 40], ['투자', 20], ['고정비', 20], ['생활비', 15], ['비상금', 5]],
   };
   const fromPreset = p => PRESETS[p].map(([name, pct], i) => ({ name, pct, color: i % COLORS.length }));
-  const defaults = () => ({ years: { [new Date().getFullYear()]: Array(12).fill(2500000) }, year: new Date().getFullYear(), month: new Date().getMonth(), cats: fromPreset('mine'), unit: 1, spill: 3, view: 'month', gross: {}, inputMode: 'net', tax: { nontax: 200000, fam: 1 } });
+  const defaults = () => ({ years: { [new Date().getFullYear()]: Array(12).fill(2500000) }, year: new Date().getFullYear(), month: new Date().getMonth(), cats: fromPreset('mine'), unit: 1, spill: 0, preset2: true, view: 'month', gross: {}, inputMode: 'net', tax: { nontax: 200000, fam: 1 } });
 
   let state = defaults();
   try {
@@ -319,6 +319,8 @@ button, select { -webkit-tap-highlight-color: transparent; touch-action: manipul
       state.year = Y0; // 열 때는 항상 올해로
       state.tax = Object.assign({ nontax: 200000, fam: 1 }, state.tax);
       state.unit = 1;
+      // 기본틀 비율을 한 번 바로 적용 (이후 사용자가 바꾼 비율은 유지)
+      if (!s.preset2) { state.cats = fromPreset('mine'); state.spill = 0; state.preset2 = true; state.updatedAt = Math.max(state.updatedAt || 0, 1795498300000); /* 기본틀 적용 시점: 이후 다른 기기에서 바꾼 값이 있으면 그게 우선 */ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
       state.gross = {}; state.inputMode = 'net'; // 월급은 세후(실수령)로만 입력, 세전은 자동 추정
       if (savedYear !== Y0) state.month = new Date().getMonth();
     }
