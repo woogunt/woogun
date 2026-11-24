@@ -84,7 +84,11 @@
   }
   const stripPhoto = ({ photo, ...rest }) => rest;
   const saveLocal = () => { if (!writeJSON(LOCAL_KEY, local)) toast("배경 사진이 너무 커요."); };
-  const saveSession = () => (session ? writeJSON(SESSION_KEY, session) : localStorage.removeItem(SESSION_KEY));
+  const saveSession = () => {
+    if (session && session.artifact) return; // claude.ai 링크 공유는 열 때마다 확인
+    try { session ? writeJSON(SESSION_KEY, session) : localStorage.removeItem(SESSION_KEY); } catch { /* 저장소 막힘 */ }
+  };
+  if (session && session.artifact) session = null;
 
   // =========================================================
   // 유틸
@@ -149,10 +153,89 @@
   // 동기화 / 저장
   // =========================================================
   let syncMod = null;
+  let artifactBackend = null; // claude.ai 링크(아티팩트)의 공유 저장소
   async function sync() {
+    if (artifactBackend) return artifactBackend;
     if (!syncMod) syncMod = await import("./sync.js");
     await syncMod.init();
     return syncMod;
+  }
+
+  // ---------------------------------------------------------
+  // claude.ai 아티팩트 공유 저장소 (db) — 링크 하나가 둘만의 공간
+  //   space/main            { profile, moods, members: { p1: 사용자id, p2: 사용자id } }
+  //   space/main/<컬렉션>/<id>  일정·일기·사진 등 하나씩
+  // ---------------------------------------------------------
+  const SPACE = "space/main";
+  const DOC_MAX = 240000; // 문서 하나 256KiB 제한 → 사진은 이보다 작게
+  const withTimeout = (p, ms) => Promise.race([Promise.resolve(p).catch(() => null), new Promise((res) => setTimeout(() => res(null), ms))]);
+  const plain = (o) => JSON.parse(JSON.stringify(o)); // undefined 제거
+
+  // 사진(dataURL)이 너무 크면 더 작게 다시 압축
+  function shrinkDataURL(src, maxLen = DOC_MAX) {
+    if (typeof src !== "string" || src.length <= maxLen) return Promise.resolve(src);
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        for (const [max, q] of [[960, 0.72], [820, 0.66], [700, 0.6], [560, 0.55], [420, 0.5]]) {
+          const sc = Math.min(1, max / Math.max(img.width, img.height));
+          const c = document.createElement("canvas");
+          c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
+          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          const out = c.toDataURL("image/jpeg", q);
+          if (out.length <= maxLen) return resolve(out);
+        }
+        resolve(null);
+      };
+      img.onerror = () => resolve(null);
+      img.src = src;
+    });
+  }
+  async function shrinkItem(data) {
+    const out = { ...data };
+    for (const k of ["src", "photo"]) if (typeof out[k] === "string") out[k] = await shrinkDataURL(out[k]);
+    return out;
+  }
+
+  function makeArtifactBackend(db, uid) {
+    const space = db.doc(SPACE);
+    const coll = (c) => db.collection(`${SPACE}/${c}`);
+    const roomFrom = (d) => ({ ...d, members: Object.values(d.members || {}).filter(Boolean) });
+    return {
+      async init() {},
+      async createRoom(profile, localData = {}) {
+        // 이미 공간이 있으면 절대 덮어쓰지 않음 (다른 기기나 상대가 먼저 만든 경우)
+        const cur = await space.get();
+        if (cur.exists) throw Object.assign(new Error("space exists"), { code: "exists" });
+        await space.set(plain({ profile, moods: localData.moods || {}, members: { p1: uid }, createdAt: Date.now() }));
+        // 이 기기에 있던 기록을 함께 올림 (하나씩, 사진은 크기를 줄여서)
+        for (const c of COLLS) {
+          for (const item of localData[c] || []) {
+            const { id, ...rest } = item;
+            try { await coll(c).doc(id).set(plain(await shrinkItem(rest))); } catch (e) { console.error("upload", c, id, e); }
+          }
+        }
+        return { roomId: "artifact", role: "p1", artifact: true };
+      },
+      async claim(r) {
+        await space.update({ members: { [r]: uid } });
+        return { roomId: "artifact", role: r, artifact: true };
+      },
+      subscribe(_, { onRoom, onColl, onError }) {
+        const unsubs = [
+          space.onSnapshot((snap) => { if (snap.exists) onRoom(roomFrom(snap.data())); }, onError),
+          ...COLLS.map((c) => coll(c).onSnapshot((qs) => onColl(c, qs.docs.map((d) => ({ id: d.id, ...d.data() }))), onError)),
+        ];
+        return () => unsubs.forEach((u) => u());
+      },
+      ops: {
+        add: async (_, c, { id, ...data }) => coll(c).doc(id).set(plain(await shrinkItem(data))),
+        update: async (_, c, id, patch) => coll(c).doc(id).update(plain(await shrinkItem(patch))),
+        remove: (_, c, id) => coll(c).doc(id).delete(),
+        setProfile: (_, profile) => space.update(plain({ profile })),
+        setMood: (_, date, r, mood) => space.update({ moods: { [date]: { [r]: mood ?? null } } }),
+      },
+    };
   }
 
   function setBadge(text, off) {
@@ -230,6 +313,7 @@
       },
       onError(e) {
         console.error(e);
+        if (session && session.artifact) { setBadge(e && e.code === "revoked" ? "연결 끊김" : "오프라인", true); return; }
         if (e.code === "permission-denied" || e.message === "not-found") {
           setBadge("연결 끊김", true);
           toast("이 기기의 연결이 해제됐어요. 상대에게 새 초대 코드를 받아주세요.");
@@ -701,7 +785,11 @@
   }
 
   function renderHome() {
-    const invite = shared() && memberCount < 2 && session.code
+    const invite = shared() && session.artifact && memberCount < 2
+      ? `<section class="widget glass" data-open="settings" style="text-align:center">
+          <div style="font-weight:800;font-size:17px">💌 ${esc(nameOf(other()))}님을 초대해주세요</div>
+          <div class="muted small" style="margin-top:6px">공유 → 이메일로 <b>편집자</b> 초대 → 상대가 이 링크를 열면 끝! (눌러서 자세히)</div></section>`
+      : shared() && memberCount < 2 && session.code
       ? `<section class="widget glass" data-open="settings" style="text-align:center">
           <div class="muted small">상대에게 이 초대 코드를 보내주세요</div>
           <div class="invite-code">${esc(session.code)}</div>
@@ -1123,7 +1211,15 @@
               <label class="row"><input type="checkbox" name="dayOne" ${p.dayOne ? "checked" : ""} /> 만난 날을 1일로 세기</label>
               <button class="btn primary" type="submit">저장</button>
             </form></div>
-          ${SHARE_ENABLED || on ? `<div class="card stack">
+          ${on && session.artifact ? `<div class="card stack">
+            <div class="w-title" style="margin:0"><span style="font-size:16px">함께 쓰기</span><span class="pill">${waiting ? "상대 기다리는 중" : "연결됨"}</span></div>
+            ${waiting ? `<p class="muted small" style="margin:0">이 링크가 둘만의 공간이에요. 상대를 이렇게 초대하세요.</p>
+              <ol class="steps">
+                <li>화면 위쪽의 <b>공유(Share)</b> 버튼을 눌러요.</li>
+                <li>${esc(nameOf(other()))}님의 이메일을 넣고, 권한을 <b>편집자(Editor)</b>로 골라 초대해요. <span class="muted">(보기 권한이면 기록을 남길 수 없어요)</span></li>
+                <li>${esc(nameOf(other()))}님이 claude.ai에 로그인해서 이 링크를 열고 <b>"${esc(nameOf(other()))}(으)로 참여하기"</b>를 누르면 끝!</li>
+              </ol>` : `<p class="muted small" style="margin:0">${esc(nameOf(other()))}님과 이 링크에서 실시간으로 함께 쓰고 있어요. 한 명이 기록하면 상대 화면에도 바로 보여요.</p>`}
+          </div>` : (SHARE_ENABLED || on) ? `<div class="card stack">
             <div class="w-title" style="margin:0"><span style="font-size:16px">실시간 공유</span><span class="pill">${!on ? "꺼짐" : waiting ? "대기 중" : "연결됨"}</span></div>
             <p class="muted small" style="margin:0">${!on
               ? "초대 코드를 만들어 상대에게 보내면, 지금까지의 기록이 함께 공유되고 실시간으로 같이 볼 수 있어요."
@@ -1135,11 +1231,11 @@
               <button class="btn" data-action="share-reset">상대 기기 다시 연결 (새 초대 코드)</button>
               <button class="btn danger" data-action="share-leave">이 기기에서 연결 끊기</button>`}
           </div>` : ""}
-          <div class="card stack">
+          ${on && session.artifact ? "" : `<div class="card stack">
             <button class="btn" data-action="export">데이터 내보내기 (JSON)</button>
             <label class="btn" style="color:var(--text)">데이터 가져오기<input type="file" id="importInput" accept="application/json" hidden /></label>
             <button class="btn danger" data-action="reset">모든 데이터 초기화</button>
-          </div>
+          </div>`}
           <p class="muted small" style="text-align:center">지도 데이터: svg-maps (CC BY 4.0), korea-sigungu-geocoding (MIT)</p>`;
       },
     },
@@ -1645,6 +1741,19 @@
     e.preventDefault();
     const f = new FormData(e.target);
     const profile = { p1: f.get("me").trim(), p2: f.get("you").trim(), start: f.get("start"), dayOne: true };
+    if (artifactBackend) {
+      busy(e.target, true);
+      $("#setupMsg").textContent = "우리 공간을 만드는 중…";
+      try {
+        session = await artifactBackend.createRoom(profile);
+        enterShared(session.role, { profile, moods: {}, members: [1] });
+      } catch (err) {
+        console.error(err);
+        if (err && err.code === "exists") { busy(e.target, false); startInArtifact(); return; }
+        $("#setupMsg").textContent = "저장하지 못했어요. 이 링크의 편집 권한이 있는지 확인해주세요.";
+      } finally { busy(e.target, false); }
+      return;
+    }
     if (!SHARE_ENABLED) { state.profile = profile; save(); boot(); return; }
     busy(e.target, true);
     $("#setupMsg").textContent = "우리 공간을 만드는 중…";
@@ -1694,9 +1803,12 @@
   function boot() {
     applyBg();
     const ready = !!state.profile;
+    $("#loading").classList.add("hidden");
+    $("#artifactJoin").classList.add("hidden");
+    $("#setupForm").classList.remove("hidden");
     $("#setup").classList.toggle("hidden", ready);
     $("#app").classList.toggle("hidden", !ready);
-    $("#joinBox").classList.toggle("hidden", !SHARE_ENABLED);
+    $("#joinBox").classList.toggle("hidden", !SHARE_ENABLED || !!artifactBackend);
     $("#setupMsg").textContent = "";
     setBadge(null);
     if (ready) {
@@ -1707,5 +1819,100 @@
     }
   }
 
-  boot();
+  // ---------------------------------------------------------
+  // claude.ai 링크로 열렸는지 확인하고, 그렇다면 둘이 함께 쓰는 공간으로 연결
+  // ---------------------------------------------------------
+  function enterShared(r, room) {
+    const theme = state;
+    state = Object.assign(defaults(), { profile: room.profile, moods: room.moods || {} });
+    // 공유 데이터가 오기 전까지는 이 기기에 있던 기록을 잠깐 보여줌
+    if (r === "p1" && theme.profile) for (const c of COLLS) state[c] = theme[c] || [];
+    session = { roomId: "artifact", role: r, artifact: true };
+    memberCount = Array.isArray(room.members) ? room.members.length : Object.values(room.members || {}).filter(Boolean).length;
+    save(); boot();
+  }
+
+  function showSetupMessage(html) {
+    $("#loading").classList.add("hidden");
+    $("#app").classList.add("hidden");
+    $("#setup").classList.remove("hidden");
+    $("#setupForm").classList.add("hidden");
+    $("#joinBox").classList.add("hidden");
+    $("#setupMsg").textContent = "";
+    const box = $("#artifactJoin");
+    box.innerHTML = html;
+    box.classList.remove("hidden");
+  }
+
+  function showJoin(room, canWrite) {
+    const members = room.members || {};
+    const p = room.profile || {};
+    if (canWrite === false) {
+      showSetupMessage(`<p><b>${esc(p.p1 || "")}</b>${p.p1 ? "님의 " : ""}공간을 보기 권한으로 열었어요.</p>
+        <p class="muted small">함께 기록하려면 공유한 사람에게 <b>편집자(Editor)</b>로 다시 초대해 달라고 해주세요.</p>`);
+      return;
+    }
+    const free = ["p1", "p2"].filter((r) => !members[r]);
+    const choices = free.length ? free : ["p1", "p2"];
+    showSetupMessage(`<p style="margin:0 0 6px"><b>${esc(p.p1 || "")} ♥ ${esc(p.p2 || "")}</b></p>
+      <p class="muted small" style="margin:0 0 16px">${free.length ? "둘만의 공간에 초대받았어요. 아래 버튼을 눌러 참여하세요." : "누구인지 골라주세요. (새 계정으로 다시 들어온 경우)"}</p>
+      <div class="stack">${choices.map((r) => `<button class="btn primary" data-join-role="${r}">${esc(p[r] || "")}(으)로 참여하기</button>`).join("")}</div>`);
+    $$("#artifactJoin [data-join-role]").forEach((b) => b.addEventListener("click", async () => {
+      $$("#artifactJoin button").forEach((x) => (x.disabled = true));
+      try {
+        const sess = await artifactBackend.claim(b.dataset.joinRole);
+        enterShared(sess.role, room);
+        toast("연결됐어요! 💕");
+      } catch (err) {
+        console.error(err);
+        $$("#artifactJoin button").forEach((x) => (x.disabled = false));
+        toast("참여하지 못했어요. 편집자 권한으로 초대받았는지 확인해주세요.");
+      }
+    }));
+  }
+
+  async function startInArtifact() {
+    $("#setup").classList.add("hidden");
+    $("#app").classList.add("hidden");
+    $("#loading").classList.remove("hidden");
+    applyBg();
+    const db = await withTimeout(window.claude.use("db"), 10000);
+    const user = db ? await withTimeout(window.claude.use("user"), 10000) : null;
+    const uid = user ? await withTimeout(user.id(), 10000) : null;
+    if (!db || !uid) { boot(); return; } // 공유 저장소를 쓸 수 없으면 이 기기에만 저장
+    artifactBackend = makeArtifactBackend(db, uid);
+    const canWrite = await withTimeout(user.can ? user.can("data.write") : null, 5000);
+    const snap = await withTimeout(db.doc(SPACE).get(), 10000);
+    if (!snap) { artifactBackend = null; boot(); toast("공유 공간에 연결하지 못했어요. 지금은 이 기기에만 저장돼요."); return; }
+    if (snap.exists) {
+      const room = snap.data();
+      const members = room.members || {};
+      const mine = ["p1", "p2"].find((r) => members[r] === uid);
+      if (mine) return enterShared(mine, room);
+      return showJoin(room, canWrite);
+    }
+    if (canWrite === false) {
+      showSetupMessage(`<p>아직 만들어진 공간이 없어요.</p><p class="muted small">이 링크를 만든 사람이 먼저 열어야 해요. 함께 쓰려면 <b>편집자(Editor)</b>로 초대받아야 해요.</p>`);
+      return;
+    }
+    if (state.profile) {
+      // 이 기기에서 쓰던 기록으로 둘만의 공간을 만듦
+      $("#loadingMsg").textContent = "기록을 함께 쓰는 공간으로 옮기는 중…";
+      try {
+        session = await artifactBackend.createRoom(state.profile, state);
+        enterShared("p1", { profile: state.profile, moods: state.moods, members: [uid] });
+        toast("이제 이 링크에서 둘이 함께 쓸 수 있어요");
+      } catch (err) {
+        console.error(err);
+        if (err && err.code === "exists") return startInArtifact(); // 그새 만들어졌으면 다시 확인
+        artifactBackend = null; boot();
+        toast("공유 공간을 만들지 못했어요. 지금은 이 기기에만 저장돼요.");
+      }
+      return;
+    }
+    boot(); // 처음이면 이름/날짜 입력 → 저장하면 공유 공간이 만들어짐
+  }
+
+  if (window.claude && typeof window.claude.use === "function") startInArtifact();
+  else boot();
 })();
