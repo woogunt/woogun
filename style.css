@@ -314,3 +314,21 @@ label.row input { width: auto; margin: 0; }
 .empty-card { display: grid; gap: 12px; text-align: center; }
 .gallery-item { cursor: pointer; }
 .gallery-item .label .pill { margin-left: 6px; font-size: 11px; vertical-align: middle; }
+
+/* 꾹 눌러 순서 바꾸기 */
+.widget { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.widget.dragging {
+  position: relative; z-index: 5; transition: none; animation: none;
+  box-shadow: 0 18px 40px rgba(20, 40, 80, .28); opacity: .96;
+}
+body.reordering { cursor: grabbing; }
+
+/* 시·군·구 지도 */
+.map-svg path.photo { stroke: #fff; stroke-width: 1.2; }
+.region-svg path { stroke-width: 1.4; }
+.page-body .region-svg path { stroke: #c9cdd6; }
+.page-body .region-svg path.photo { stroke: #fff; }
+.district-head { display: grid; grid-template-columns: 120px 1fr; gap: 16px; align-items: center; }
+.district-shape .map-svg { max-height: 140px; }
+.district-shape .map-svg path { fill: var(--visited); stroke: #fff; stroke-width: 3; cursor: default; }
+.district-head .btn:disabled { opacity: 1; }

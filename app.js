@@ -390,12 +390,122 @@
   const latestPhotoBy = (r) => state.photos.find((p) => p.by === r && safeImg(p.src));
   const visited = (prefix) => state.places.filter((p) => p.id.startsWith(prefix));
 
+  // ---- 데이트 지도: 시·도 → 시·군·구 ----
+  const SGG = window.SGG_INDEX || {};
+  const SGG_TOTAL = Object.values(SGG).reduce((n, l) => n + l.length, 0);
+  const PROV_OF_CODE = {};
+  for (const [prov, list] of Object.entries(SGG)) list.forEach(([code]) => (PROV_OF_CODE[code] = prov));
+  const provName = (prov) => (window.MAP_KR.locations.find((l) => l.id === prov) || {}).name || prov;
+  const sggName = (code) => ((SGG[PROV_OF_CODE[code]] || []).find(([c]) => c === code) || [])[1] || code;
+
+  // 가본 구: 지도에 표시했거나 사진을 넣은 곳. photo = 그 구의 가장 최근 사진
+  function districtState() {
+    const visitedSet = new Set(visited("d-").map((p) => p.id.slice(2)));
+    const photo = new Map();
+    for (const p of state.photos) {
+      if (typeof p.place !== "string" || !p.place.startsWith("d-") || !safeImg(p.src)) continue;
+      const code = p.place.slice(2);
+      visitedSet.add(code);
+      if (!photo.has(code)) photo.set(code, p.src);
+    }
+    return { visited: visitedSet, photo };
+  }
+  function provinceState() {
+    const ds = districtState();
+    const out = {};
+    for (const [prov, list] of Object.entries(SGG)) {
+      const codes = list.map(([c]) => c);
+      const n = codes.filter((c) => ds.visited.has(c)).length;
+      const ph = codes.map((c) => ds.photo.get(c)).find(Boolean);
+      out[prov] = { n, total: codes.length, photo: ph, on: n > 0 || state.places.some((p) => p.id === `kr-${prov}`) };
+    }
+    return out;
+  }
+
+  // 사진을 지역 모양 안에 채우는 SVG 패턴. 위치/크기는 그린 뒤 fitPatterns()가 맞춤
+  let patSeq = 0;
+  function mapShapes(locs, { info, action, label }) {
+    let defs = "";
+    const paths = locs.map((l) => {
+      const st = info(l.id);
+      let fill = "";
+      if (st.photo) {
+        const pid = `ph${++patSeq}`;
+        defs += `<pattern id="${pid}" patternUnits="userSpaceOnUse"><image href="${st.photo}" preserveAspectRatio="xMidYMid slice" /></pattern>`;
+        fill = `style="fill:url(#${pid})" data-ph="${pid}"`;
+      }
+      return `<path d="${l.path}" class="${st.on ? "on" : ""} ${st.photo ? "photo" : ""}" ${fill} ${action ? `data-action="${action}" data-v="${esc(l.id)}"` : ""}><title>${esc(label(l))}</title></path>`;
+    }).join("");
+    return `${defs ? `<defs>${defs}</defs>` : ""}${paths}`;
+  }
+  function fitPatterns(root) {
+    $$("path[data-ph]", root).forEach((path) => {
+      const pat = path.ownerSVGElement.getElementById(path.dataset.ph);
+      if (!pat) return;
+      let b;
+      try { b = path.getBBox(); } catch { return; }
+      if (!b.width) return;
+      pat.setAttribute("x", b.x); pat.setAttribute("y", b.y);
+      pat.setAttribute("width", b.width); pat.setAttribute("height", b.height);
+      const img = pat.querySelector("image");
+      img.setAttribute("width", b.width); img.setAttribute("height", b.height);
+    });
+  }
+
   function koreaSVG(clickable) {
-    const on = new Set(visited("kr-").map((p) => p.id.slice(3)));
+    const ps = provinceState();
     const m = window.MAP_KR;
-    return `<svg class="map-svg" viewBox="${m.viewBox}" role="img" aria-label="대한민국 지도">${m.locations.map((l) =>
-      `<path d="${l.path}" class="${on.has(l.id) ? "on" : ""}" ${clickable ? `data-action="place" data-id="kr-${l.id}"` : ""}><title>${l.name}</title></path>`
-    ).join("")}</svg>`;
+    return `<svg class="map-svg" viewBox="${m.viewBox}" role="img" aria-label="대한민국 지도">${mapShapes(m.locations, {
+      info: (id) => ps[id] || {}, action: clickable ? "region" : null,
+      label: (l) => `${l.name} ${ps[l.id] ? `${ps[l.id].n}/${ps[l.id].total}` : ""}`,
+    })}</svg>`;
+  }
+
+  // 시·도별 시·군·구 지도는 필요할 때만 불러옴
+  const scriptLoads = {};
+  function loadScript(src) {
+    if (!scriptLoads[src]) {
+      scriptLoads[src] = new Promise((resolve, reject) => {
+        const el = document.createElement("script");
+        el.src = src; el.onload = resolve;
+        el.onerror = () => { delete scriptLoads[src]; reject(new Error(src)); };
+        document.head.appendChild(el);
+      });
+    }
+    return scriptLoads[src];
+  }
+  function districtSVG(code) {
+    const prov = PROV_OF_CODE[code];
+    const m = window.MAP_SGG && window.MAP_SGG[prov];
+    const l = m && m.locations.find((x) => x.id === code);
+    if (!l) { if (prov) loadScript(`maps/sgg/${prov}.js`).then(render, () => {}); return ""; }
+    const ds = districtState();
+    return `<svg class="map-svg one" viewBox="${m.viewBox}" data-fit="1">${mapShapes([l], {
+      info: () => ({ on: true, photo: ds.photo.get(code) }), action: null, label: (x) => x.name })}</svg>`;
+  }
+
+  // 구 하나만 그릴 때는 viewBox를 그 모양에 맞게 줄임
+  function fitOne() {
+    $$("svg.one[data-fit]", $("#pageBody")).forEach((svg) => {
+      try {
+        const b = svg.querySelector("path").getBBox();
+        const pad = Math.max(b.width, b.height) * 0.06;
+        svg.setAttribute("viewBox", `${b.x - pad} ${b.y - pad} ${b.width + pad * 2} ${b.height + pad * 2}`);
+        fitPatterns(svg);
+      } catch { /* 숨겨진 상태 */ }
+    });
+  }
+
+  function regionSVG(prov) {
+    const m = window.MAP_SGG && window.MAP_SGG[prov];
+    if (!m) {
+      loadScript(`maps/sgg/${prov}.js`).then(render, () => toast("지도를 불러오지 못했어요."));
+      return `<div class="empty-hint">지도를 불러오는 중…</div>`;
+    }
+    const ds = districtState();
+    return `<svg class="map-svg region-svg" viewBox="${m.viewBox}" role="img" aria-label="${esc(provName(prov))} 지도">${mapShapes(m.locations, {
+      info: (code) => ({ on: ds.visited.has(code), photo: ds.photo.get(code) }), action: "district", label: (l) => l.name,
+    })}</svg>`;
   }
 
   function worldSVG(clickable) {
@@ -521,7 +631,8 @@
     korea: {
       name: "데이트 지도", page: "korea", cls: "w-korea",
       html() {
-        const pct = Math.round((visited("kr-").length / window.MAP_KR.locations.length) * 100);
+        const n = districtState().visited.size;
+        const pct = SGG_TOTAL ? Math.round((n / SGG_TOTAL) * 1000) / 10 : 0;
         return `<div class="w-title"><span><span class="em">🗺️</span>데이트 지도</span><span class="side">전국 ${pct}%</span></div>${koreaSVG(false)}`;
       },
     },
@@ -596,6 +707,7 @@
     $("#widgets").innerHTML = invite + (local.widgets.map((k) => widgetHTML(k)).join("")
       || `<div class="widget glass" data-action="gallery"><div class="empty-hint">홈 화면이 비어 있어요. ＋를 눌러 블럭을 추가해보세요.</div></div>`);
     $("#bellDot").classList.toggle("hidden", !notifications().some((n) => n.at > local.lastSeen));
+    fitPatterns($("#widgets"));
   }
 
   function applyBg() {
@@ -637,6 +749,8 @@
     const scroll = $("#pageBody").scrollTop;
     $("#pageBody").innerHTML = p.html(top.arg);
     $("#pageBody").scrollTop = scrollTop ? 0 : scroll;
+    fitPatterns($("#pageBody"));
+    fitOne();
   }
 
   const addBtn = (action, label = "＋ 추가", extra = "") => `<button class="add-btn" data-action="${action}" ${extra}>${label}</button>`;
@@ -744,13 +858,54 @@
     korea: {
       title: "데이트 지도",
       html() {
-        const on = new Set(visited("kr-").map((p) => p.id));
-        const pct = Math.round((on.size / window.MAP_KR.locations.length) * 100);
-        return `<div class="card"><div class="w-title"><span>전국 ${pct}% 정복</span><span class="side">${on.size}/${window.MAP_KR.locations.length}</span></div>
+        const ps = provinceState();
+        const n = districtState().visited.size;
+        const pct = SGG_TOTAL ? Math.round((n / SGG_TOTAL) * 1000) / 10 : 0;
+        return `<div class="card"><div class="w-title"><span>전국 ${pct}% 정복</span><span class="side">${n}/${SGG_TOTAL}곳</span></div>
             ${koreaSVG(true)}
-            <p class="muted small">지역을 눌러 함께 가본 곳을 표시하세요.</p>
-            <div class="region-chips">${window.MAP_KR.locations.map((l) =>
-              `<button class="chip ${on.has(`kr-${l.id}`) ? "on" : ""}" data-action="place" data-id="kr-${l.id}">${l.name}</button>`).join("")}</div></div>`;
+            <p class="muted small">시·도를 누르면 시·군·구 지도가 열려요. 가본 곳에 사진을 넣어보세요.</p>
+            <div class="region-chips">${window.MAP_KR.locations.slice().sort((a, b) => (ps[b.id]?.n || 0) - (ps[a.id]?.n || 0)).map((l) =>
+              `<button class="chip ${ps[l.id]?.on ? "on" : ""}" data-action="region" data-v="${l.id}">${l.name}${ps[l.id]?.n ? ` ${ps[l.id].n}` : ""}</button>`).join("")}</div></div>`;
+      },
+    },
+
+    // ---- 시·도 안의 시·군·구 ----
+    region: {
+      title: (prov) => provName(prov),
+      html(prov) {
+        const ds = districtState();
+        const list = SGG[prov] || [];
+        const n = list.filter(([c]) => ds.visited.has(c)).length;
+        const legacy = state.places.some((p) => p.id === `kr-${prov}`);
+        return `<div class="card"><div class="w-title"><span>${esc(provName(prov))}</span><span class="side">${n}/${list.length}곳</span></div>
+            ${regionSVG(prov)}
+            <p class="muted small">구·군을 누르면 사진을 넣고 가본 곳으로 표시할 수 있어요.</p>
+            <div class="region-chips">${list.map(([c, name]) =>
+              `<button class="chip ${ds.visited.has(c) ? "on" : ""}" data-action="district" data-v="${c}">${ds.photo.has(c) ? "📷 " : ""}${esc(name)}</button>`).join("")}</div>
+            ${legacy ? `<button class="link" style="margin-top:10px" data-action="place" data-id="kr-${prov}">이전 방식의 '${esc(provName(prov))} 전체' 표시 지우기</button>` : ""}
+          </div>`;
+      },
+    },
+
+    // ---- 시·군·구 하나: 가본 곳 표시 + 사진 ----
+    district: {
+      title: (code) => sggName(code),
+      action: (code) => addBtn("place-photo", "＋ 사진", `data-v="${esc(code)}"`),
+      html(code) {
+        const ds = districtState();
+        const pics = state.photos.filter((p) => p.place === `d-${code}` && safeImg(p.src));
+        return `<div class="card district-head">
+            <div class="district-shape">${districtSVG(code)}</div>
+            <div class="stack" style="gap:8px">
+              <div class="muted small">${esc(provName(PROV_OF_CODE[code]))}</div>
+              <button class="btn ${ds.visited.has(code) ? "primary" : ""}" data-action="place" data-id="d-${code}" ${pics.length ? "disabled" : ""}>
+                ${ds.visited.has(code) ? "♥ 가본 곳" : "가본 곳으로 표시"}</button>
+              ${pics.length ? `<div class="muted small">사진이 있는 곳은 가본 곳으로 표시돼요.</div>` : ""}
+            </div></div>
+          ${pics.length
+            ? `<div class="photo-grid">${pics.map((p) => `<img src="${p.src}" data-action="view-photo" data-id="${esc(p.id)}" alt="${esc(sggName(code))} 사진" loading="lazy" />`).join("")}</div>`
+            : `<div class="card empty-card"><div class="empty-hint">아직 사진이 없어요. 이곳에서의 추억을 넣어보세요.</div>
+                <button class="btn primary full" data-action="place-photo" data-v="${esc(code)}">📷 사진 넣기</button></div>`}`;
       },
     },
 
@@ -831,6 +986,7 @@
         const p = state.profile, on = shared(), waiting = on && memberCount < 2;
         const mine = local.widgets;
         return `<div class="card"><h3>홈 블럭</h3>
+            <p class="muted small" style="margin:-4px 0 6px">홈 화면에서 블럭을 꾹 누르면 끌어서 순서를 바꿀 수 있어요.</p>
             <ul class="list my-widgets">${mine.map((k, i) => `<li><span class="grow">${WIDGETS[k].name}</span>
               <button class="icon-sq" data-action="w-up" data-k="${k}" ${i === 0 ? "disabled" : ""} aria-label="${WIDGETS[k].name} 위로">↑</button>
               <button class="icon-sq" data-action="w-down" data-k="${k}" ${i === mine.length - 1 ? "disabled" : ""} aria-label="${WIDGETS[k].name} 아래로">↓</button>
@@ -866,7 +1022,7 @@
             <label class="btn" style="color:var(--text)">데이터 가져오기<input type="file" id="importInput" accept="application/json" hidden /></label>
             <button class="btn danger" data-action="reset">모든 데이터 초기화</button>
           </div>
-          <p class="muted small" style="text-align:center">지도 데이터: svg-maps (CC BY 4.0)</p>`;
+          <p class="muted small" style="text-align:center">지도 데이터: svg-maps (CC BY 4.0), korea-sigungu-geocoding (MIT)</p>`;
       },
     },
   };
@@ -898,7 +1054,7 @@
     const out = [];
     const push = (list, fn) => list.filter((x) => x.by === who && x.at).forEach((x) => out.push({ at: x.at, ...fn(x) }));
     push(state.diary, (x) => ({ em: "✍️", text: `${n}님이 일기를 썼어요: ${x.title}`, photo: x.photo }));
-    push(state.photos, (x) => ({ em: "📸", text: `${n}님이 사진을 올렸어요`, photo: x.src }));
+    push(state.photos, (x) => ({ em: "📸", text: x.place ? `${n}님이 ${placeName(x.place)}에 사진을 넣었어요` : `${n}님이 사진을 올렸어요`, photo: x.src }));
     push(state.events, (x) => ({ em: "📅", text: `${n}님이 일정을 추가했어요: ${fmtW(parse(x.date))} ${x.title}` }));
     push(state.records, (x) => ({ em: "📜", text: `${n}님이 기록을 남겼어요: ${x.title}`, photo: x.photo }));
     push(state.expenses, (x) => ({ em: "💰", text: `${n}님이 지출을 기록했어요: ${x.title} ${won(x.amount)}` }));
@@ -907,6 +1063,7 @@
     return out.sort((a, b) => b.at - a.at).slice(0, 40);
   }
   function placeName(id) {
+    if (id.startsWith("d-")) return `${provName(PROV_OF_CODE[id.slice(2)])} ${sggName(id.slice(2))}`;
     if (id.startsWith("kr-")) return (window.MAP_KR.locations.find((l) => `kr-${l.id}` === id) || {}).name || id;
     return countryName(id.slice(2), id);
   }
@@ -1087,13 +1244,28 @@
     },
     "country-add": () => { const v = $("#countrySel")?.value; if (v) store.add("places", { id: `w-${v}` }); },
 
+    region: (el) => openPage("region", el.dataset.v),
+    district: (el) => openPage("district", el.dataset.v),
+    "place-photo": async (el) => {
+      const code = el.dataset.v;
+      const files = await pickImages({ multiple: true });
+      if (!files.length) return;
+      if (shared()) toast("사진을 올리는 중…");
+      for (const f of files) {
+        try {
+          const src = await resizeImage(f, shared() ? 960 : 1080);
+          await store.add("photos", { id: uid(), src, place: `d-${code}` });
+        } catch { /* 읽을 수 없는 파일은 건너뜀 */ }
+      }
+      if (!state.places.some((p) => p.id === `d-${code}`)) store.add("places", { id: `d-${code}` });
+    },
     "photo-take": () => addPhotos(true),
     "photo-add": () => addPhotos(false),
     "view-photo": (el) => {
       const p = state.photos.find((x) => x.id === el.dataset.id); if (!p) return;
       viewing = p.id;
       $("#viewerImg").src = safeImg(p.src);
-      $("#viewerCap").textContent = `${nameOf(p.by)} · ${fmt(new Date(p.at))}`;
+      $("#viewerCap").textContent = `${nameOf(p.by)} · ${fmt(new Date(p.at))}${p.place ? ` · ${placeName(p.place)}` : ""}`;
       $("#viewer").classList.remove("hidden");
     },
 
@@ -1160,6 +1332,120 @@
     const w = e.target.closest(".widget[data-open]");
     if (w) openPage(w.dataset.open);
   });
+
+  // =========================================================
+  // 홈 블럭 꾹 눌러서 순서 바꾸기
+  // =========================================================
+  const LONG_PRESS_MS = 450;
+  let press = null; // { el, x0, y0, y, timer, dragging, grab, shift }
+  let suppressClick = false;
+  let autoScroll = null;
+
+  function pressStart(el, x, y) {
+    pressCancel();
+    press = { el, x0: x, y0: y, y, dragging: false, shift: 0 };
+    press.timer = setTimeout(beginDrag, LONG_PRESS_MS);
+  }
+  function pressCancel() {
+    if (!press) return;
+    clearTimeout(press.timer);
+    press = null;
+  }
+  function beginDrag() {
+    if (!press) return;
+    const { el } = press;
+    press.dragging = true;
+    press.grab = press.y - el.getBoundingClientRect().top;
+    el.classList.add("dragging");
+    document.body.classList.add("reordering");
+    try { if (navigator.vibrate) navigator.vibrate(15); } catch { /* 진동 미지원 */ }
+    autoScroll = setInterval(() => {
+      if (!press) return;
+      const edge = 90;
+      if (press.y < edge) window.scrollBy(0, -12);
+      else if (press.y > innerHeight - edge) window.scrollBy(0, 12);
+      else return;
+      dragTo(press.y);
+    }, 16);
+  }
+  function dragTo(y) {
+    const { el } = press;
+    press.y = y;
+    // 손가락 위치에 맞춰 앞뒤 블럭과 자리를 바꿈
+    const centerY = y - press.grab + el.offsetHeight / 2;
+    let moved = true;
+    while (moved) {
+      moved = false;
+      const prev = el.previousElementSibling, next = el.nextElementSibling;
+      if (prev && prev.matches(".widget[data-w]")) {
+        const b = prev.getBoundingClientRect();
+        if (centerY < b.top + b.height / 2) { el.parentNode.insertBefore(el, prev); moved = true; continue; }
+      }
+      if (next && next.matches(".widget[data-w]")) {
+        const b = next.getBoundingClientRect();
+        if (centerY > b.top + b.height / 2) { el.parentNode.insertBefore(next, el); moved = true; }
+      }
+    }
+    el.style.transform = "none";
+    const base = el.getBoundingClientRect().top;
+    press.shift = y - press.grab - base;
+    el.style.transform = `translateY(${press.shift}px) scale(1.03)`;
+  }
+  function pressEnd() {
+    if (!press) return;
+    clearTimeout(press.timer);
+    clearInterval(autoScroll);
+    if (press.dragging) {
+      const { el } = press;
+      el.classList.remove("dragging");
+      el.style.transform = "";
+      document.body.classList.remove("reordering");
+      local.widgets = $$("#widgets .widget[data-w]").map((w) => w.dataset.w);
+      saveLocal();
+      suppressClick = true;
+      setTimeout(() => (suppressClick = false), 250);
+      renderHome();
+      toast("블럭 순서를 바꿨어요");
+    }
+    press = null;
+  }
+  const widgetAt = (target) => {
+    const w = target.closest && target.closest("#widgets .widget[data-w]");
+    return w && !target.closest("input, textarea, select") ? w : null;
+  };
+
+  // 터치
+  const widgetsEl = $("#widgets");
+  widgetsEl.addEventListener("touchstart", (e) => {
+    const w = widgetAt(e.target);
+    if (w && e.touches.length === 1) pressStart(w, e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+  document.addEventListener("touchmove", (e) => {
+    if (!press) return;
+    const t = e.touches[0];
+    if (press.dragging) { e.preventDefault(); dragTo(t.clientY); }
+    else if (Math.hypot(t.clientX - press.x0, t.clientY - press.y0) > 10) pressCancel(); // 스크롤하려는 것
+  }, { passive: false });
+  document.addEventListener("touchend", pressEnd);
+  document.addEventListener("touchcancel", pressEnd);
+
+  // 마우스 (PC)
+  widgetsEl.addEventListener("mousedown", (e) => {
+    const w = widgetAt(e.target);
+    if (w && e.button === 0) pressStart(w, e.clientX, e.clientY);
+  });
+  document.addEventListener("mousemove", (e) => {
+    if (!press) return;
+    if (press.dragging) { e.preventDefault(); dragTo(e.clientY); }
+    else if (Math.hypot(e.clientX - press.x0, e.clientY - press.y0) > 10) pressCancel();
+  });
+  document.addEventListener("mouseup", pressEnd);
+
+  // 꾹 누른 뒤 손을 떼면 생기는 클릭은 무시 (블럭이 열리지 않게)
+  document.addEventListener("click", (e) => {
+    if (suppressClick) { e.stopPropagation(); e.preventDefault(); suppressClick = false; }
+  }, true);
+  widgetsEl.addEventListener("contextmenu", (e) => { if (widgetAt(e.target)) e.preventDefault(); });
 
   $("#addBtn").addEventListener("click", () => openPage("gallery"));
   $("#gearBtn").addEventListener("click", () => openPage("settings"));
