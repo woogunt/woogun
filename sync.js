@@ -3,7 +3,7 @@ const config = window.FIREBASE_CONFIG;
 
 const V = "10.14.1";
 const CDN = `https://www.gstatic.com/firebasejs/${V}`;
-const COLLS = ["events", "bucket", "letters", "photos"];
+export const COLLS = ["events", "bucket", "diary", "records", "expenses", "photos", "places"];
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 헷갈리는 0/O, 1/I 제외
 const INVITE_DAYS = 7;
 
@@ -56,19 +56,14 @@ export async function createRoom(profile, localData = {}) {
     moods: local.moods || {},
     createdAt: fs.serverTimestamp(),
   });
-  // 기존 데이터 업로드 (사진은 크기 때문에 하나씩)
-  const batch = fs.writeBatch(db);
-  let n = 0;
-  for (const coll of ["events", "bucket", "letters"]) {
+  // 기존 데이터 업로드 (사진이 들어있을 수 있어 문서별로 저장)
+  const writes = [];
+  for (const coll of COLLS) {
     for (const { id, ...rest } of local[coll] || []) {
-      batch.set(fs.doc(db, "rooms", ref.id, coll, id), rest);
-      n++;
+      writes.push(fs.setDoc(fs.doc(db, "rooms", ref.id, coll, id), rest));
     }
   }
-  if (n) await batch.commit();
-  for (const { id, ...rest } of local.photos || []) {
-    await fs.setDoc(fs.doc(db, "rooms", ref.id, "photos", id), rest);
-  }
+  await Promise.all(writes);
   const code = await makeInvite(ref.id, "p2");
   return { roomId: ref.id, role: "p1", code };
 }
