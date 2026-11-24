@@ -56,7 +56,25 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55; }
 .wrap { max-width: 1120px; margin: 0 auto; padding-block: 28px 48px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; margin-bottom: 20px; }
+header { position: relative; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; margin-bottom: 20px; padding-right: 52px; }
+.gear { position: absolute; top: -2px; right: 0; width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); display: grid; place-items: center; }
+.gear:hover { border-color: var(--accent); color: var(--accent); }
+.gear svg { width: 20px; height: 20px; }
+/* 설정 창 */
+dialog.settings { border: 1px solid var(--line); border-radius: 16px; padding: 0; width: min(440px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); background: var(--surface); color: var(--ink); }
+dialog.settings::backdrop { background: rgba(10, 20, 16, 0.45); }
+.set-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 18px; border-bottom: 1px solid var(--line); }
+.set-head h2 { margin: 0; font-size: 1.05rem; }
+.set-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.icon-now { display: flex; align-items: center; gap: 14px; }
+.icon-now img { width: 72px; height: 72px; border-radius: 16px; border: 1px solid var(--line); object-fit: cover; background: var(--soft); }
+.icon-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.icon-opt { border: 2px solid transparent; background: var(--soft); border-radius: 14px; padding: 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 0.72rem; color: var(--muted); }
+.icon-opt img, .icon-opt .ph { width: 100%; aspect-ratio: 1; max-width: 100%; border-radius: 11px; object-fit: cover; }
+.icon-opt .ph { display: grid; place-items: center; font-size: 1.6rem; background: var(--surface); border: 1px dashed var(--line); color: var(--muted); }
+.icon-opt[aria-pressed="true"] { border-color: var(--accent); color: var(--ink); }
+.set-note { margin: 0; font-size: 0.8rem; color: var(--muted); line-height: 1.6; background: var(--soft); border-radius: 10px; padding: 10px 12px; }
+.set-note b { color: var(--ink); }
 h1 { font-size: 1.6rem; margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
 header p { margin: 0; color: var(--muted); font-size: 0.9rem; }
 .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 20px; align-items: start; }
@@ -211,8 +229,20 @@ button, select { -webkit-tap-highlight-color: transparent; touch-action: manipul
 <div class="wrap">
   <header>
     <h1>월급 쪼개기</h1>
+    <button class="gear" id="openSettings" aria-label="설정" title="설정"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     <p>달마다 월급을 넣으면 정해둔 비율대로 통장별 금액이 나와요. <span class="sync" id="syncStatus" data-s="local">이 기기에만 저장</span></p>
   </header>
+
+  <dialog class="settings" id="settings" aria-labelledby="setTitle">
+    <div class="set-head"><h2 id="setTitle">설정</h2><button class="btn ghost" id="closeSettings">닫기</button></div>
+    <div class="set-body">
+      <span class="label">앱 아이콘</span>
+      <div class="icon-now"><img id="iconNow" alt="지금 아이콘"><div class="note" id="iconNowText" style="margin:0"></div></div>
+      <div class="icon-grid" id="iconGrid"></div>
+      <input type="file" id="iconFile" accept="image/*" hidden>
+      <p class="set-note" id="iconHelp">아이콘을 바꾼 뒤에는 <b>홈 화면의 앱을 지우고 Safari에서 다시 ‘홈 화면에 추가’</b>해야 새 아이콘이 보여요. 아이폰은 추가할 때의 아이콘을 저장해 두기 때문이에요. 맥은 Dock에서 지우고 ‘파일 → Dock에 추가’를 다시 하면 돼요. 입력한 월급과 비율은 그대로 남아요.</p>
+    </div>
+  </dialog>
 
   <div class="grid">
     <section class="panel" aria-label="설정">
@@ -815,6 +845,93 @@ button, select { -webkit-tap-highlight-color: transparent; touch-action: manipul
       flash('설정 코드를 적용했어요');
     } catch (e) { flash('코드를 읽지 못했어요. 처음부터 끝까지 다 복사했는지 확인해 주세요'); }
   });
+
+  // ── 설정: 앱 아이콘 바꾸기 (이 기기에만 저장) ──
+  const ICON_KEY = 'salary-split-icon';
+  const isApp = !!document.querySelector('link[rel="manifest"]'); // 홈 화면용 앱(github.io)인지
+  function iconCanvas(draw) { const c = document.createElement('canvas'); c.width = c.height = 512; draw(c.getContext('2d'), 512); return c.toDataURL('image/png'); }
+  const ICON_PRESETS = [
+    { id: 'won50k', name: '5만원', url: () => iconCanvas((g, S) => {
+      const gr = g.createLinearGradient(0, 0, 0, S); gr.addColorStop(0, '#F7D06E'); gr.addColorStop(1, '#E2A03A'); g.fillStyle = gr; g.fillRect(0, 0, S, S);
+      const rr = (x, y, w, h, r) => { g.beginPath(); g.roundRect(x, y, w, h, r); };
+      g.lineWidth = 7; g.strokeStyle = '#B07022'; rr(36, 36, S - 72, S - 72, 30); g.stroke();
+      g.lineWidth = 3; g.strokeStyle = '#C48834'; rr(50, 50, S - 100, S - 100, 23); g.stroke();
+      g.fillStyle = '#6E3E0E'; g.font = 'bold 76px -apple-system, system-ui, sans-serif'; g.textBaseline = 'top'; g.fillText('50000', 66, 66);
+      g.beginPath(); g.arc(S / 2, S * 0.585, 128, 0, Math.PI * 2); g.fillStyle = '#FADE8C'; g.fill(); g.lineWidth = 5; g.strokeStyle = '#B07022'; g.stroke();
+      g.fillStyle = '#6E3E0E'; g.font = 'bold 150px -apple-system, system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('₩', S / 2, S * 0.595);
+    }) },
+    { id: 'bars', name: '녹색 막대', url: () => iconCanvas((g, S) => {
+      g.fillStyle = '#1E6B57'; g.fillRect(0, 0, S, S);
+      const parts = [[.30, '#FFFFFF'], [.25, '#BFE3D6'], [.25, '#F2C66B'], [.20, '#9CC4F0']]; let x = 85;
+      parts.forEach(([f, c]) => { const w = 342 * f; g.fillStyle = c; g.beginPath(); g.roundRect(x, 176, w - 10, 62, 14); g.fill(); x += w; });
+      parts.forEach(([f, c], k) => { g.fillStyle = c; g.beginPath(); g.roundRect(85, 280 + k * 38, 342 * f * 2.4, 22, 11); g.fill(); });
+    }) },
+    { id: 'pig', name: '저금통', url: () => iconCanvas((g, S) => { g.fillStyle = '#F6C6CF'; g.fillRect(0, 0, S, S); g.font = '330px "Apple Color Emoji", "Noto Color Emoji", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('🐷', S / 2, S * 0.54); }) },
+    { id: 'bag', name: '돈주머니', url: () => iconCanvas((g, S) => { g.fillStyle = '#DDEFE6'; g.fillRect(0, 0, S, S); g.font = '330px "Apple Color Emoji", "Noto Color Emoji", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('💰', S / 2, S * 0.54); }) },
+  ];
+  const DEFAULT_ICON = isApp ? 'apple-touch-icon.png' : null;
+  function readIcon() { try { return JSON.parse(localStorage.getItem(ICON_KEY)); } catch (e) { return null; } }
+  function applyIcon(url) {
+    if (!isApp) return;
+    const set = (rel, href) => { let l = document.querySelector(`link[rel="${rel}"]`); if (!l) { l = document.createElement('link'); l.rel = rel; document.head.appendChild(l); } l.href = href; };
+    set('apple-touch-icon', url || 'apple-touch-icon.png'); set('icon', url || 'icon-192.png');
+    // 맥 Chrome 등 설치용 정보(manifest)의 아이콘도 같이 바꿈
+    const m = document.querySelector('link[rel="manifest"]');
+    if (!m.dataset.orig) m.dataset.orig = m.getAttribute('href');
+    if (!url) { m.setAttribute('href', m.dataset.orig); return; }
+    const base = new URL('./', location.href).href;
+    const man = { id: base, name: '월급 쪼개기', short_name: '월급 쪼개기', lang: 'ko', start_url: base, scope: base, display: 'standalone', background_color: '#F1F4F1', theme_color: '#1E6B57',
+      icons: [{ src: url, sizes: '512x512', type: url.startsWith('data:image/jpeg') ? 'image/jpeg' : 'image/png', purpose: 'any' }] };
+    m.setAttribute('href', URL.createObjectURL(new Blob([JSON.stringify(man)], { type: 'application/manifest+json' })));
+  }
+  function renderIconSettings() {
+    const cur = readIcon();
+    const nowUrl = cur ? cur.url : (DEFAULT_ICON || ICON_PRESETS[0].url());
+    $('iconNow').src = nowUrl;
+    $('iconNowText').textContent = cur ? (cur.id === 'photo' ? '내 사진' : (ICON_PRESETS.find(p => p.id === cur.id) || {}).name || '사용자 아이콘') : '기본 아이콘 (5만원)';
+    const grid = $('iconGrid'); grid.innerHTML = '';
+    ICON_PRESETS.forEach(p => {
+      const b = document.createElement('button'); b.className = 'icon-opt'; b.id = 'icon-' + p.id;
+      b.setAttribute('aria-pressed', String(cur ? cur.id === p.id : p.id === 'won50k'));
+      const img = document.createElement('img'); img.alt = ''; img.src = p.url(); b.append(img, document.createTextNode(p.name));
+      b.addEventListener('click', () => {
+        if (p.id === 'won50k') { try { localStorage.removeItem(ICON_KEY); } catch (e) {} applyIcon(null); }
+        else { const url = p.url(); try { localStorage.setItem(ICON_KEY, JSON.stringify({ id: p.id, url })); } catch (e) {} applyIcon(url); }
+        renderIconSettings(); flash('아이콘을 바꿨어요. 홈 화면에 다시 추가하면 적용돼요');
+      });
+      grid.appendChild(b);
+    });
+    const pick = document.createElement('button'); pick.className = 'icon-opt'; pick.id = 'icon-photo';
+    pick.setAttribute('aria-pressed', String(!!cur && cur.id === 'photo'));
+    if (cur && cur.id === 'photo') { const img = document.createElement('img'); img.alt = ''; img.src = cur.url; pick.append(img); } else { const ph = document.createElement('span'); ph.className = 'ph'; ph.textContent = '+'; pick.append(ph); }
+    pick.append(document.createTextNode('사진에서'));
+    pick.addEventListener('click', () => $('iconFile').click());
+    grid.appendChild(pick);
+    $('iconHelp').hidden = !isApp;
+    if (!isApp) $('iconNowText').textContent = '앱 아이콘은 홈 화면에 추가한 앱(woogunt.github.io)에서 바꿔 주세요. 여기서 고른 건 이 브라우저에만 저장돼요.';
+  }
+  // 사진을 가운데 정사각형으로 잘라 512px로 줄임
+  $('iconFile').addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    const img = new Image(); const objUrl = URL.createObjectURL(f);
+    img.onload = () => {
+      const s = Math.min(img.naturalWidth, img.naturalHeight), sx = (img.naturalWidth - s) / 2, sy = (img.naturalHeight - s) / 2;
+      const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d');
+      g.fillStyle = '#FFFFFF'; g.fillRect(0, 0, 512, 512); g.drawImage(img, sx, sy, s, s, 0, 0, 512, 512);
+      URL.revokeObjectURL(objUrl);
+      const url = c.toDataURL('image/jpeg', 0.9);
+      try { localStorage.setItem(ICON_KEY, JSON.stringify({ id: 'photo', url })); } catch (err) { flash('사진이 너무 커서 저장하지 못했어요. 다른 사진을 골라 주세요'); return; }
+      applyIcon(url); renderIconSettings(); flash('사진으로 아이콘을 바꿨어요. 홈 화면에 다시 추가하면 적용돼요');
+    };
+    img.onerror = () => { URL.revokeObjectURL(objUrl); flash('이 파일은 열 수 없어요. JPG나 PNG 사진을 골라 주세요'); };
+    img.src = objUrl;
+  });
+  { const cur = readIcon(); if (cur && cur.url) applyIcon(cur.url); }
+  const dlg = $('settings');
+  $('openSettings').addEventListener('click', () => { renderIconSettings(); if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', ''); });
+  $('closeSettings').addEventListener('click', () => { if (dlg.close) dlg.close(); else dlg.removeAttribute('open'); });
+  dlg.addEventListener('click', e => { if (e.target === dlg && dlg.close) dlg.close(); });
   // 날짜가 바뀌면 오늘 표시를 다시 그림
   let lastDay = new Date().toDateString();
   setInterval(() => {
