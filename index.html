@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#ff6b8b" />
+  <title>우리둘</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- 처음 설정 -->
+  <section id="setup" class="setup hidden">
+    <div class="setup-card">
+      <div class="logo">♥</div>
+      <h1>우리둘</h1>
+      <p class="muted">우리만의 공간을 만들어볼까요?</p>
+      <form id="setupForm">
+        <label>나의 이름<input name="me" required maxlength="12" placeholder="예) 우건" /></label>
+        <label>상대 이름<input name="you" required maxlength="12" placeholder="예) 지민" /></label>
+        <label>처음 만난 날<input name="start" type="date" required /></label>
+        <button class="btn primary" type="submit">시작하기</button>
+      </form>
+    </div>
+  </section>
+
+  <div id="app" class="app hidden">
+    <header class="topbar">
+      <h2 id="pageTitle">홈</h2>
+      <button class="icon-btn" id="themeBtn" aria-label="테마 변경">◐</button>
+    </header>
+
+    <main>
+      <!-- 홈 -->
+      <section class="page" data-page="home">
+        <div class="hero card">
+          <div class="couple">
+            <span id="nameMe" class="name"></span>
+            <span class="heart">♥</span>
+            <span id="nameYou" class="name"></span>
+          </div>
+          <div class="dday" id="ddayNum">D+0</div>
+          <div class="muted" id="startText"></div>
+        </div>
+
+        <div class="grid2">
+          <div class="card stat">
+            <div class="stat-label">다음 기념일</div>
+            <div class="stat-value" id="nextAnniv">-</div>
+            <div class="muted small" id="nextAnnivDate"></div>
+          </div>
+          <div class="card stat">
+            <div class="stat-label">함께한 시간</div>
+            <div class="stat-value" id="togetherWeeks">-</div>
+            <div class="muted small" id="togetherHours"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>오늘의 기분</h3></div>
+          <div class="mood-row">
+            <div class="mood-col">
+              <div class="muted small" id="moodMeLabel"></div>
+              <div class="mood-pick" data-who="me"></div>
+            </div>
+            <div class="mood-col">
+              <div class="muted small" id="moodYouLabel"></div>
+              <div class="mood-pick" data-who="you"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>다가오는 일정</h3><button class="link" data-go="calendar">전체보기</button></div>
+          <ul class="list" id="upcomingList"></ul>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>기념일</h3></div>
+          <ul class="list" id="annivList"></ul>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>최근 편지</h3><button class="link" data-go="letters">전체보기</button></div>
+          <div id="latestLetter" class="muted">아직 편지가 없어요.</div>
+        </div>
+      </section>
+
+      <!-- 캘린더 -->
+      <section class="page hidden" data-page="calendar">
+        <div class="card">
+          <div class="cal-head">
+            <button class="icon-btn" id="prevMonth">‹</button>
+            <strong id="calTitle"></strong>
+            <button class="icon-btn" id="nextMonth">›</button>
+          </div>
+          <div class="cal-week"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+          <div class="cal-grid" id="calGrid"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3 id="selDateTitle">일정</h3></div>
+          <ul class="list" id="dayEvents"></ul>
+          <form id="eventForm" class="inline-form">
+            <input name="title" placeholder="일정 추가" required maxlength="40" />
+            <button class="btn primary" type="submit">추가</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- 버킷리스트 -->
+      <section class="page hidden" data-page="bucket">
+        <div class="card">
+          <div class="card-head"><h3>우리의 버킷리스트</h3><span class="pill" id="bucketCount">0/0</span></div>
+          <div class="progress"><div id="bucketBar"></div></div>
+          <form id="bucketForm" class="inline-form">
+            <input name="title" placeholder="함께 하고 싶은 일" required maxlength="50" />
+            <button class="btn primary" type="submit">추가</button>
+          </form>
+          <ul class="list checklist" id="bucketList"></ul>
+        </div>
+      </section>
+
+      <!-- 편지 -->
+      <section class="page hidden" data-page="letters">
+        <div class="card">
+          <form id="letterForm" class="stack">
+            <select name="from" id="letterFrom"></select>
+            <textarea name="body" rows="4" placeholder="마음을 전해보세요" required maxlength="1000"></textarea>
+            <button class="btn primary" type="submit">편지 남기기</button>
+          </form>
+        </div>
+        <div id="letterList"></div>
+      </section>
+
+      <!-- 앨범 -->
+      <section class="page hidden" data-page="album">
+        <div class="card">
+          <label class="btn primary full">
+            사진 추가
+            <input type="file" id="photoInput" accept="image/*" multiple hidden />
+          </label>
+          <p class="muted small">사진은 이 기기에만 저장돼요.</p>
+        </div>
+        <div class="photo-grid" id="photoGrid"></div>
+      </section>
+
+      <!-- 설정 -->
+      <section class="page hidden" data-page="settings">
+        <div class="card">
+          <form id="settingsForm" class="stack">
+            <label>나의 이름<input name="me" required maxlength="12" /></label>
+            <label>상대 이름<input name="you" required maxlength="12" /></label>
+            <label>처음 만난 날<input name="start" type="date" required /></label>
+            <label class="row"><input type="checkbox" name="dayOne" /> 만난 날을 1일로 세기</label>
+            <button class="btn primary" type="submit">저장</button>
+          </form>
+        </div>
+        <div class="card stack">
+          <button class="btn" id="exportBtn">데이터 내보내기 (JSON)</button>
+          <label class="btn">데이터 가져오기<input type="file" id="importInput" accept="application/json" hidden /></label>
+          <button class="btn danger" id="resetBtn">모든 데이터 초기화</button>
+        </div>
+      </section>
+    </main>
+
+    <nav class="tabbar">
+      <button data-go="home" class="active"><span>⌂</span>홈</button>
+      <button data-go="calendar"><span>▦</span>캘린더</button>
+      <button data-go="bucket"><span>✓</span>버킷</button>
+      <button data-go="letters"><span>✉</span>편지</button>
+      <button data-go="album"><span>▣</span>앨범</button>
+      <button data-go="settings"><span>⚙</span>설정</button>
+    </nav>
+  </div>
+
+  <div id="viewer" class="viewer hidden">
+    <img id="viewerImg" alt="" />
+    <div class="viewer-actions">
+      <button class="btn danger" id="viewerDel">삭제</button>
+      <button class="btn" id="viewerClose">닫기</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

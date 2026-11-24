@@ -1,0 +1,9 @@
+{
+  "name": "우리둘",
+  "short_name": "우리둘",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#fff6f8",
+  "theme_color": "#ff6b8b",
+  "lang": "ko"
+}
