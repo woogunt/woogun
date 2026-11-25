@@ -72,7 +72,7 @@
   if (state.theme !== undefined) delete state.theme;
 
   const shared = () => !!(session && session.roomId);
-  const role = () => (session && session.role) || "p1";
+  const role = () => (session && session.role) || local.myRole || "p1";
   const other = () => (role() === "p1" ? "p2" : "p1");
   const nameOf = (r) => (state.profile && state.profile[r]) || (r === role() ? "나" : "상대");
 
@@ -221,6 +221,9 @@
       async claim(r) {
         await space.update({ members: { [r]: uid } });
         return { roomId: "artifact", role: r, artifact: true };
+      },
+      async switchRole(from, to) {
+        await space.update({ members: { [to]: uid, [from]: null } });
       },
       subscribe(_, { onRoom, onColl, onError }) {
         const unsubs = [
@@ -1265,6 +1268,11 @@
               <button class="icon-sq" data-action="w-remove" data-k="${k}" aria-label="${WIDGETS[k].name} 빼기">✕</button></li>`).join("") || `<li class="empty">홈 화면에 블럭이 없어요</li>`}</ul>
             ${mine.length < Object.keys(WIDGETS).length ? `<button class="btn primary full" style="margin-top:10px" data-action="gallery">＋ 블럭 추가하기</button>` : ""}
           </div>
+          <div class="card"><h3>나는 누구인가요?</h3>
+            <p class="muted small" style="margin:-4px 0 10px">이 기기를 쓰는 사람을 골라주세요. 잘못 되어 있으면 여기서 바꿀 수 있어요.</p>
+            <div class="seg" style="margin:0">${["p1", "p2"].map((r) =>
+              `<button type="button" class="${role() === r ? "on" : ""}" data-action="switch-role" data-v="${r}" aria-pressed="${role() === r}">${esc(p[r] || (r === "p1" ? "첫 번째 사람" : "두 번째 사람"))}${role() === r ? " (나)" : ""}</button>`).join("")}</div>
+          </div>
           <div class="card"><h3>우리 정보</h3>
             <form id="profileForm" class="stack">
               <label>우리 공간 이름<input name="title" maxlength="16" value="${esc(p.title || "")}" placeholder="${esc(DEFAULT_TITLE)}" /></label>
@@ -1655,6 +1663,47 @@
         saveSession(); render();
         ACTIONS["share-invite"]();
       } catch (err) { console.error(err); toast("초대를 만들지 못했어요. 인터넷 연결을 확인해주세요."); }
+    },
+    // 이 기기의 사람(나) 바꾸기
+    "switch-role": async (el) => {
+      const to = el.dataset.v, from = role();
+      if (to === from) return;
+      const toName = nameOf(to);
+      const alone = !shared() || memberCount < 2;
+      if (!alone && !(await ask(`${toName}님으로 바꿀까요?\n상대도 ${toName}님으로 되어 있으면 둘 다 같은 사람으로 보여요. 상대 폰에서는 반대로 바꿔주세요.`, "바꾸기"))) return;
+      // 상대가 아직 안 들어왔으면, 지금까지 남긴 기록도 바뀐 사람 것으로 옮길지 물어봄
+      const mine = alone ? ["events", "bucket", "diary", "records", "expenses", "photos", "places"]
+        .flatMap((c) => state[c].filter((x) => x.by === from).map((x) => [c, x])) : [];
+      const moveRecords = mine.length > 0 && (await ask(`지금까지 남긴 기록 ${mine.length}개도 ${toName}님이 쓴 걸로 바꿀까요?`, "같이 바꾸기"));
+      try {
+        if (shared() && session.artifact) await artifactBackend.switchRole(from, to);
+        session ? (session.role = to) : (local.myRole = to);
+        if (session) {
+          saveSession();
+          if (!session.artifact) {
+            const s = await sync();
+            await s.remember(session.roomId, to);
+            // 상대를 기다리는 중이면, 초대 링크도 상대 자리로 다시 만들기
+            if (memberCount < 2) {
+              if (session.code) await s.deleteInvite(session.code);
+              session.code = await s.newInvite(session.roomId, to);
+            }
+            saveSession();
+          }
+        } else saveLocal();
+        if (moveRecords) {
+          for (const [c, x] of mine) {
+            const patch = { by: to };
+            if (c === "events" && x.owner === from) patch.owner = to;
+            await store.update(c, x.id, patch);
+          }
+        }
+        toast(`이제 이 기기는 ${toName}님이에요`);
+        render();
+      } catch (err) {
+        console.error(err);
+        toast("바꾸지 못했어요. 인터넷 연결을 확인해주세요.");
+      }
     },
     "link-google": async (el) => {
       el.disabled = true;

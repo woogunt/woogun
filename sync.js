@@ -199,6 +199,12 @@ export async function resetInvite(roomId, myRole) {
   return makeInvite(roomId, myRole === "p1" ? "p2" : "p1");
 }
 
+// 쓰지 않을 초대 지우기 (예: 내 자리를 바꿔서 상대 자리가 달라졌을 때)
+export async function deleteInvite(code) {
+  await init();
+  if (code) await fs.deleteDoc(fs.doc(db, "invites", code)).catch(() => {});
+}
+
 // 초대 코드를 잃어버렸을 때 새로 발급 (멤버는 그대로)
 export async function newInvite(roomId, myRole) {
   await init();
