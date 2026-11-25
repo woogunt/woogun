@@ -476,3 +476,13 @@ body.reordering { cursor: grabbing; }
 .day-photos { margin-bottom: 16px; }
 .day-photos img { border-radius: 14px; }
 @media (max-width: 360px) { .c2 { min-height: 70px; } .c2 .ev { font-size: 9.5px; } }
+
+/* 아이콘 버튼: 그림 아이콘을 정확히 가운데로 */
+.ico { display: block; flex: none; pointer-events: none; }
+.round-btn, .back-btn, .round-glass, .round-plus, .cal-head button, .icon-sq {
+  display: inline-grid; place-items: center; padding: 0; line-height: 0; color: inherit;
+}
+.round-btn { color: #fff; }
+.back-btn, .round-glass, .cal-head button, .icon-sq { color: var(--text); }
+.round-plus { color: var(--page-fg); }
+.icon-sq:disabled { opacity: .35; }

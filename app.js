@@ -25,6 +25,20 @@
   const EXP_CATS = ["식비", "카페", "문화", "교통", "숙소", "쇼핑", "선물", "기타"];
   const DEFAULT_WIDGETS = ["dday", "calendar", "diary", "album"];
   const DEFAULT_TITLE = "우리둘"; // 이름을 정하지 않았을 때
+  // 버튼 아이콘 (글자 대신 그림이라 어느 폰에서나 정확히 가운데)
+  const ICON = {
+    plus: `<svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>`,
+    bell: `<svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg>`,
+    gear: `<svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+    back: `<svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>`,
+    next: `<svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>`,
+    search: `<svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>`,
+    camera: `<svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.6-2.2h6.8L17 8h3v11H4z"/><circle cx="12" cy="13.5" r="3.4"/></svg>`,
+    up: `<svg class="ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>`,
+    down: `<svg class="ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>`,
+    close: `<svg class="ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>`,
+  };
+
 
   // =========================================================
   // 저장소
@@ -1007,7 +1021,7 @@
     // ---- 커플 캘린더 ----
     calendar: {
       title: "",
-      action: () => `<button class="round-glass" data-action="cal-search" aria-label="일정 검색">🔍</button>`,
+      action: () => `<button class="round-glass" data-action="cal-search" aria-label="일정 검색">${ICON.search}</button>`,
       html() {
         const cm = ui.calMonth || (ui.calMonth = new Date(today().getFullYear(), today().getMonth(), 1));
         const sel = ui.selDate || (ui.selDate = ymd(today()));
@@ -1084,8 +1098,8 @@
           <div class="day-head">
             <h3>${fmtLong(parse(sel))}</h3>
             <div class="day-btns">
-              <button class="round-plus" data-action="cal-photo-add" aria-label="이 날 사진 추가">📷</button>
-              <button class="round-plus" data-action="event-new" aria-label="이 날 일정 추가">＋</button>
+              <button class="round-plus" data-action="cal-photo-add" aria-label="이 날 사진 추가">${ICON.camera}</button>
+              <button class="round-plus" data-action="event-new" aria-label="이 날 일정 추가">${ICON.plus}</button>
             </div>
           </div>
           ${list.length ? `<div class="card day-list">${list.join("")}</div>` : `<p class="muted day-empty">이 날 일정이 없어요</p>`}
@@ -1210,7 +1224,7 @@
         list.forEach((x) => (byCat[x.cat] = (byCat[x.cat] || 0) + (+x.amount || 0)));
         const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
         return `<div class="card">
-            <div class="cal-head"><button data-action="bm-move" data-v="-1" aria-label="이전 달">‹</button><strong>${bm.getFullYear()}년 ${bm.getMonth() + 1}월</strong><button data-action="bm-move" data-v="1" aria-label="다음 달">›</button></div>
+            <div class="cal-head"><button data-action="bm-move" data-v="-1" aria-label="이전 달">${ICON.back}</button><strong>${bm.getFullYear()}년 ${bm.getMonth() + 1}월</strong><button data-action="bm-move" data-v="1" aria-label="다음 달">${ICON.next}</button></div>
             <div class="money" style="text-align:center">${won(total)}</div>
             ${list.length ? payerBars(list) : ""}
           </div>
@@ -1263,9 +1277,9 @@
           <div class="card"><h3>홈 블럭</h3>
             <p class="muted small" style="margin:-4px 0 6px">홈 화면에서 블럭을 꾹 누르면 끌어서 순서를 바꿀 수 있어요.</p>
             <ul class="list my-widgets">${mine.map((k, i) => `<li><span class="grow">${WIDGETS[k].name}</span>
-              <button class="icon-sq" data-action="w-up" data-k="${k}" ${i === 0 ? "disabled" : ""} aria-label="${WIDGETS[k].name} 위로">↑</button>
-              <button class="icon-sq" data-action="w-down" data-k="${k}" ${i === mine.length - 1 ? "disabled" : ""} aria-label="${WIDGETS[k].name} 아래로">↓</button>
-              <button class="icon-sq" data-action="w-remove" data-k="${k}" aria-label="${WIDGETS[k].name} 빼기">✕</button></li>`).join("") || `<li class="empty">홈 화면에 블럭이 없어요</li>`}</ul>
+              <button class="icon-sq" data-action="w-up" data-k="${k}" ${i === 0 ? "disabled" : ""} aria-label="${WIDGETS[k].name} 위로">${ICON.up}</button>
+              <button class="icon-sq" data-action="w-down" data-k="${k}" ${i === mine.length - 1 ? "disabled" : ""} aria-label="${WIDGETS[k].name} 아래로">${ICON.down}</button>
+              <button class="icon-sq" data-action="w-remove" data-k="${k}" aria-label="${WIDGETS[k].name} 빼기">${ICON.close}</button></li>`).join("") || `<li class="empty">홈 화면에 블럭이 없어요</li>`}</ul>
             ${mine.length < Object.keys(WIDGETS).length ? `<button class="btn primary full" style="margin-top:10px" data-action="gallery">＋ 블럭 추가하기</button>` : ""}
           </div>
           <div class="card"><h3>나는 누구인가요?</h3>
