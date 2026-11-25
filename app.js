@@ -171,7 +171,7 @@
   let artifactBackend = null; // claude.ai 링크(아티팩트)의 공유 저장소
   async function sync() {
     if (artifactBackend) return artifactBackend;
-    if (!syncMod) syncMod = await import("./sync.js?v=202611251359"); // 버전 표시로 예전 저장본 대신 새 파일
+    if (!syncMod) syncMod = await import("./sync.js?v=202611251406"); // 버전 표시로 예전 저장본 대신 새 파일
     await syncMod.init();
     return syncMod;
   }
@@ -251,6 +251,7 @@
         update: async (_, c, id, patch) => coll(c).doc(id).update(plain(await shrinkItem(patch))),
         remove: (_, c, id) => coll(c).doc(id).delete(),
         setProfile: (_, profile) => space.update(plain({ profile })),
+        setWidgets: (_, widgets) => space.update({ widgets }),
         setMood: (_, date, r, mood) => space.update({ moods: { [date]: { [r]: mood ?? null } } }),
       },
     };
@@ -321,6 +322,13 @@
       onRoom(room) {
         state.profile = room.profile;
         state.moods = room.moods || {};
+        if (validWidgets(room.widgets)) {
+          state.widgets = validWidgets(room.widgets);
+          if (!press || !press.dragging) { local.widgets = state.widgets; saveLocal(); }
+        } else if (!state.widgetsPushed) {
+          state.widgetsPushed = true; // 아직 공유된 배치가 없으면 지금 내 배치를 둘의 배치로
+          s.ops.setWidgets(session.roomId, validWidgets(local.widgets) || DEFAULT_WIDGETS.slice()).catch((e) => console.warn(e));
+        }
         memberCount = room.members.length;
         if (memberCount >= 2 && session.code) { delete session.code; saveSession(); }
         setBadge(memberCount >= 2 ? "● 공유 중" : "상대 기다리는 중", memberCount < 2);
@@ -814,7 +822,7 @@
           <button class="btn kakao" data-action="share-invite" style="margin:10px 0 6px">💬 카카오톡으로 초대 링크 보내기</button>
           <div class="muted small">또는 초대 코드 <b class="code-inline">${esc(session.code)}</b> <button class="link" data-action="copy-code">복사</button></div></section>`
       : "";
-    $("#widgets").innerHTML = invite + (local.widgets.map((k) => widgetHTML(k)).join("")
+    $("#widgets").innerHTML = invite + (widgetList().map((k) => widgetHTML(k)).join("")
       || `<div class="widget glass" data-action="gallery"><div class="empty-hint">홈 화면이 비어 있어요. ＋를 눌러 블럭을 추가해보세요.</div></div>`);
     $("#bellDot").classList.toggle("hidden", !notifications().some((n) => n.at > local.lastSeen));
     fitPatterns($("#widgets"));
@@ -929,6 +937,21 @@
     </div>`;
   }
 
+  // ---- 블럭 배치: 공유 중이면 둘이 같은 배치 ----
+  const validWidgets = (list) => (Array.isArray(list) ? list.filter((k, i) => WIDGETS[k] && list.indexOf(k) === i) : null);
+  function widgetList() {
+    return (shared() && validWidgets(state.widgets)) || validWidgets(local.widgets) || DEFAULT_WIDGETS.slice();
+  }
+  function setWidgets(list, skipRender) {
+    list = validWidgets(list) || [];
+    local.widgets = list; saveLocal();
+    if (shared()) {
+      state.widgets = list; save();
+      remote((s) => s.ops.setWidgets(session.roomId, list));
+    }
+    if (!skipRender) render(); else renderHome();
+  }
+
   // =========================================================
   // 페이지 (전체 화면)
   // =========================================================
@@ -979,8 +1002,8 @@
             <span class="pill">바꾸기</span>
           </div>
           <p class="muted small" style="margin:0 4px 14px">블럭을 누르면 홈 화면에 추가되고 바로 열려요.</p>
-          ${Object.keys(WIDGETS).sort((x, y) => local.widgets.includes(x) - local.widgets.includes(y)).map((k) => {
-            const added = local.widgets.includes(k);
+          ${Object.keys(WIDGETS).sort((x, y) => widgetList().includes(x) - widgetList().includes(y)).map((k) => {
+            const added = widgetList().includes(k);
             return `<div class="gallery-item" data-action="w-add" data-k="${k}">
               <div class="preview">${widgetHTML(k, { preview: true })}</div>
               <div class="label">${WIDGETS[k].name}${added ? ` <span class="pill">홈에 있음 · 열기</span>` : ""}</div></div>`;
@@ -1258,7 +1281,7 @@
       title: "설정",
       html() {
         const p = state.profile, on = shared(), waiting = on && memberCount < 2;
-        const mine = local.widgets;
+        const mine = widgetList();
         return `<div class="card stack" id="bgCard"><h3 style="margin:0">홈 배경화면</h3>
             ${bgPreviewHTML()}
             <div class="bg-btns">
@@ -1275,7 +1298,7 @@
             <p class="muted small" style="margin:0">배경화면과 블럭 설정은 이 기기에만 적용돼요.</p>
           </div>
           <div class="card"><h3>홈 블럭</h3>
-            <p class="muted small" style="margin:-4px 0 6px">홈 화면에서 블럭을 꾹 누르면 끌어서 순서를 바꿀 수 있어요.</p>
+            <p class="muted small" style="margin:-4px 0 6px">홈 화면에서 블럭을 꾹 누르면 끌어서 순서를 바꿀 수 있어요.${shared() ? ` 블럭 추가·순서는 ${esc(nameOf(other()))}님 홈에도 똑같이 바뀌어요.` : ""}</p>
             <ul class="list my-widgets">${mine.map((k, i) => `<li><span class="grow">${WIDGETS[k].name}</span>
               <button class="icon-sq" data-action="w-up" data-k="${k}" ${i === 0 ? "disabled" : ""} aria-label="${WIDGETS[k].name} 위로">${ICON.up}</button>
               <button class="icon-sq" data-action="w-down" data-k="${k}" ${i === mine.length - 1 ? "disabled" : ""} aria-label="${WIDGETS[k].name} 아래로">${ICON.down}</button>
@@ -1514,10 +1537,11 @@
   }
 
   function moveWidget(k, dir) {
-    const i = local.widgets.indexOf(k), j = i + dir;
-    if (i < 0 || j < 0 || j >= local.widgets.length) return;
-    [local.widgets[i], local.widgets[j]] = [local.widgets[j], local.widgets[i]];
-    saveLocal(); render();
+    const list = widgetList().slice();
+    const i = list.indexOf(k), j = i + dir;
+    if (i < 0 || j < 0 || j >= list.length) return;
+    [list[i], list[j]] = [list[j], list[i]];
+    setWidgets(list);
   }
 
   let viewing = null;
@@ -1529,9 +1553,9 @@
     // ＋에서 블럭 선택: 홈에 추가하고 바로 그 블럭을 연다 (이미 있으면 열기만)
     "w-add": (el) => {
       const k = el.dataset.k;
-      const isNew = !local.widgets.includes(k);
-      if (isNew) local.widgets.push(k);
-      saveLocal(); closeAllPages(); render();
+      const isNew = !widgetList().includes(k);
+      closeAllPages();
+      if (isNew) setWidgets([...widgetList(), k]); else render();
       const w = $(`#widgets [data-w="${k}"]`);
       if (w) { w.scrollIntoView({ block: "center" }); w.classList.add("flash"); }
       if (WIDGETS[k].page) openPage(WIDGETS[k].page);
@@ -1543,7 +1567,7 @@
       ui.calMonth = new Date(d.getFullYear(), d.getMonth(), 1);
       openPage("calendar");
     },
-    "w-remove": (el) => { local.widgets = local.widgets.filter((k) => k !== el.dataset.k); saveLocal(); render(); },
+    "w-remove": (el) => setWidgets(widgetList().filter((k) => k !== el.dataset.k)),
     "w-up": (el) => moveWidget(el.dataset.k, -1),
     "w-down": (el) => moveWidget(el.dataset.k, 1),
 
@@ -1881,8 +1905,7 @@
       el.classList.remove("dragging");
       el.style.transform = "";
       document.body.classList.remove("reordering");
-      local.widgets = $$("#widgets .widget[data-w]").map((w) => w.dataset.w);
-      saveLocal();
+      setWidgets($$("#widgets .widget[data-w]").map((w) => w.dataset.w), true);
       suppressClick = true;
       setTimeout(() => (suppressClick = false), 250);
       renderHome();

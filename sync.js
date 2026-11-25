@@ -229,6 +229,7 @@ export const ops = {
   update: (roomId, coll, id, patch) => fs.updateDoc(fs.doc(db, "rooms", roomId, coll, id), JSON.parse(JSON.stringify(patch))),
   remove: (roomId, coll, id) => fs.deleteDoc(fs.doc(db, "rooms", roomId, coll, id)),
   setProfile: (roomId, profile) => fs.updateDoc(roomRef(roomId), { profile }),
+  setWidgets: (roomId, widgets) => fs.updateDoc(roomRef(roomId), { widgets }),
   setMood: (roomId, date, role, mood) =>
     fs.updateDoc(roomRef(roomId), new fs.FieldPath("moods", date, role), mood ?? fs.deleteField()),
 };
