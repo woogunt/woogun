@@ -125,7 +125,23 @@ export async function myRoom() {
 export async function remember(roomId, role) {
   await init();
   if (!auth.currentUser) return;
-  await fs.setDoc(userRef(), { roomId, role, at: Date.now() }).catch((e) => console.warn("remember", e.code));
+  // merge: 같은 문서에 저장한 내 기기 설정(prefs)은 지우지 않음
+  await fs.setDoc(userRef(), { roomId, role, at: Date.now() }, { merge: true }).catch((e) => console.warn("remember", e.code));
+}
+
+// 내 기기 설정 (배경화면·블럭 유리 효과 등) — 앱을 지웠다 다시 깔아도 로그인하면 돌아오도록
+export async function loadPrefs() {
+  await init();
+  if (!auth.currentUser) return null;
+  try {
+    const s = await fs.getDoc(userRef());
+    return s.exists() ? s.data().prefs || null : null;
+  } catch { return null; }
+}
+export async function savePrefs(prefs) {
+  await init();
+  if (!auth.currentUser) return;
+  await fs.setDoc(userRef(), { prefs }, { merge: true });
 }
 
 // ---------- 초대 ----------

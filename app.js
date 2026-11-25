@@ -98,7 +98,41 @@
     if (!writeJSON(KEY, data)) toast("저장 공간이 부족해요. 사진을 몇 장 지워주세요.");
   }
   const stripPhoto = ({ photo, ...rest }) => rest;
-  const saveLocal = () => { if (!writeJSON(LOCAL_KEY, local)) toast("배경 사진이 너무 커요."); };
+  const saveLocal = () => { if (!writeJSON(LOCAL_KEY, local)) toast("배경 사진이 너무 커요."); schedulePrefsSync(); };
+
+  // ---- 내 기기 설정을 내 구글 계정에 백업 (Firebase 공유 모드) ----
+  const PREF_KEYS = ["bg", "bgLum", "glass", "calPhotos", "lastSeen", "myRole"];
+  const prefsOf = (o) => { const p = {}; for (const k of PREF_KEYS) if (o[k] !== undefined) p[k] = o[k]; return p; };
+  let prefsPushed = null, prefsTimer = null, prefsReady = false;
+  function schedulePrefsSync() {
+    if (!prefsReady || !session || session.artifact || !syncMod || !syncMod.savePrefs) return;
+    const json = JSON.stringify(prefsOf(local));
+    if (json === prefsPushed) return;
+    clearTimeout(prefsTimer);
+    prefsTimer = setTimeout(async () => {
+      try {
+        local.prefsAt = Date.now(); writeJSON(LOCAL_KEY, local);
+        await syncMod.savePrefs({ ...prefsOf(local), at: local.prefsAt });
+        prefsPushed = json;
+      } catch (e) { console.warn("prefs", e); }
+    }, 1500);
+  }
+  // 로그인 직후: 계정에 저장된 설정이 더 최신이면(예: 앱을 지웠다 다시 깐 경우) 그걸로 되돌림
+  async function restorePrefs(s) {
+    if (!s.loadPrefs) return;
+    const remotePrefs = await s.loadPrefs();
+    if (remotePrefs && (remotePrefs.at || 0) > (local.prefsAt || 0)) {
+      for (const k of PREF_KEYS) if (remotePrefs[k] !== undefined) local[k] = remotePrefs[k];
+      local.prefsAt = remotePrefs.at;
+      writeJSON(LOCAL_KEY, local);
+      prefsPushed = JSON.stringify(prefsOf(local));
+      applyBg(); render();
+    } else {
+      prefsPushed = remotePrefs ? JSON.stringify(prefsOf(remotePrefs)) : null;
+    }
+    prefsReady = true;
+    schedulePrefsSync(); // 이 기기 쪽이 더 최신이면 올림
+  }
   const saveSession = () => {
     if (session && session.artifact) return; // claude.ai 링크 공유는 열 때마다 확인
     try { session ? writeJSON(SESSION_KEY, session) : localStorage.removeItem(SESSION_KEY); } catch { /* 저장소 막힘 */ }
@@ -171,7 +205,7 @@
   let artifactBackend = null; // claude.ai 링크(아티팩트)의 공유 저장소
   async function sync() {
     if (artifactBackend) return artifactBackend;
-    if (!syncMod) syncMod = await import("./sync.js?v=202611251406"); // 버전 표시로 예전 저장본 대신 새 파일
+    if (!syncMod) syncMod = await import("./sync.js?v=202611251410"); // 버전 표시로 예전 저장본 대신 새 파일
     await syncMod.init();
     return syncMod;
   }
@@ -317,7 +351,10 @@
     setBadge("연결 중…", true);
     let s;
     try { s = await sync(); } catch (e) { console.error(e); setBadge("오프라인", true); return; }
-    if (!session.artifact && s.remember) s.remember(session.roomId, session.role);
+    if (!session.artifact && s.remember) {
+      s.remember(session.roomId, session.role);
+      restorePrefs(s).catch((e) => console.warn("restore prefs", e));
+    }
     unsubscribe = s.subscribe(session.roomId, {
       onRoom(room) {
         state.profile = room.profile;
@@ -1295,7 +1332,7 @@
               <input type="range" id="glassAlpha" min="15" max="95" step="1" value="${Math.round((1 - local.glass.alpha) * 100)}" class="range" /></label>
             <label for="glassBlur">블러 세기 <span class="muted" id="glassBlurVal">${local.glass.blur}</span>
               <input type="range" id="glassBlur" min="0" max="40" step="1" value="${local.glass.blur}" class="range" /></label>
-            <p class="muted small" style="margin:0">배경화면과 블럭 설정은 이 기기에만 적용돼요.</p>
+            <p class="muted small" style="margin:0">배경화면과 블럭 설정은 내 폰에만 적용돼요.${shared() && !session.artifact ? " 구글 로그인이면 내 계정에 저장돼서, 앱을 지웠다 다시 깔아도 그대로예요." : ""}</p>
           </div>
           <div class="card"><h3>홈 블럭</h3>
             <p class="muted small" style="margin:-4px 0 6px">홈 화면에서 블럭을 꾹 누르면 끌어서 순서를 바꿀 수 있어요.${shared() ? ` 블럭 추가·순서는 ${esc(nameOf(other()))}님 홈에도 똑같이 바뀌어요.` : ""}</p>
