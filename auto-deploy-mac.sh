@@ -47,6 +47,8 @@ run() {
   dir="$(find "$work" -maxdepth 1 -type d -name 'woogun-*' | head -n 1)"
   if [ -z "$dir" ]; then log "코드 폴더를 찾지 못함"; rm -rf "$work"; exit 0; fi
 
+  # 앱 왼쪽 위에 보일 배포 시각
+  printf '{"deployedAt":"%s","commit":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${latest:0:7}" > "$dir/version.json"
   if (cd "$dir" && npx --yes firebase-tools deploy --non-interactive) >> "$LOG" 2>&1; then
     echo "$latest" > "$HOME_DIR/last-sha"
     log "배포 완료 ✔"

@@ -14,6 +14,8 @@ if errorlevel 1 goto fail
 echo [2/3] Deploying to https://woogunt-a9c74.web.app ...
 cd /d "%WORK%\woogun-claude-pensive-mccarthy-5wusj0"
 if errorlevel 1 goto fail
+rem 앱 왼쪽 위에 보일 배포 시각
+powershell -NoProfile -Command "[IO.File]::WriteAllText('version.json', '{\"deployedAt\":\"' + (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') + '\"}')"
 call npx --yes firebase-tools deploy
 if errorlevel 1 goto fail
 

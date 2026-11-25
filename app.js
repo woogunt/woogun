@@ -171,7 +171,7 @@
   let artifactBackend = null; // claude.ai 링크(아티팩트)의 공유 저장소
   async function sync() {
     if (artifactBackend) return artifactBackend;
-    if (!syncMod) syncMod = await import("./sync.js?v=202611251346"); // 버전 표시로 예전 저장본 대신 새 파일
+    if (!syncMod) syncMod = await import("./sync.js?v=202611251350"); // 버전 표시로 예전 저장본 대신 새 파일
     await syncMod.init();
     return syncMod;
   }
@@ -2183,6 +2183,22 @@
     } catch { /* 지원 안 하는 브라우저 */ }
   }
 
+  // ---- 왼쪽 위 배포 시각 (배포할 때 version.json 에 기록됨) ----
+  async function showDeployInfo() {
+    if (!location.protocol.startsWith("http")) return;
+    try {
+      const res = await fetch("version.json", { cache: "no-store" });
+      if (!res.ok) return;
+      const { deployedAt } = await res.json();
+      const d = new Date(deployedAt);
+      if (isNaN(d)) return;
+      const el = $("#deployInfo");
+      el.textContent = `배포 ${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      el.title = `마지막 배포: ${d.toLocaleString("ko-KR")}`;
+      el.classList.remove("hidden");
+    } catch { /* 기록이 없으면 표시 안 함 */ }
+  }
+
   function boot() {
     applyTitle();
     applyBg();
@@ -2303,4 +2319,5 @@
 
   if (window.claude && typeof window.claude.use === "function") startInArtifact();
   else boot();
+  showDeployInfo();
 })();

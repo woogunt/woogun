@@ -486,3 +486,11 @@ body.reordering { cursor: grabbing; }
 .back-btn, .round-glass, .cal-head button, .icon-sq { color: var(--text); }
 .round-plus { color: var(--page-fg); }
 .icon-sq:disabled { opacity: .35; }
+
+/* 왼쪽 위: 배포 시각 + 공유 상태 */
+.top-left { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.deploy-info {
+  font-size: 11px; font-weight: 700; color: rgba(255,255,255,.95); letter-spacing: .2px; font-variant-numeric: tabular-nums;
+  background: rgba(40, 60, 95, 0.45); padding: 4px 9px; border-radius: 99px;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); white-space: nowrap;
+}

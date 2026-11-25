@@ -13,6 +13,8 @@ ditto -x -k app.zip . || fail
 cd woogun-claude-pensive-mccarthy-5wusj0 || fail
 
 echo "[2/3] https://woogunt-a9c74.web.app 에 배포하는 중..."
+# 앱 왼쪽 위에 보일 배포 시각
+printf '{"deployedAt":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > version.json
 npx --yes firebase-tools deploy || fail
 
 echo
