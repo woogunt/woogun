@@ -709,7 +709,7 @@
       name: "오늘의 기분", page: null,
       html() {
         const mood = state.moods[ymd(today())] || {};
-        const col = (who, mine) => `<div class="mood-col"><div class="muted small">${esc(nameOf(who))}</div>
+        const col = (who, mine) => `<div class="mood-col"><div class="muted small">${esc(nameOf(who))}${mine ? " (나)" : ""}</div>
           <div class="mood-pick">${MOODS.map((m) => `<button type="button" data-action="${mine ? "mood" : "mood-other"}" data-v="${m}" class="${mood[who] === m ? "on" : ""}">${m}</button>`).join("")}</div></div>`;
         return `<div class="w-title"><span><span class="em">💗</span>오늘의 기분</span></div>
           <div class="mood-row">${col(role(), true)}${col(other(), false)}</div>`;
