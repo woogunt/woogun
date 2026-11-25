@@ -3,11 +3,12 @@
 #   (PC에서 `npx firebase-tools init hosting:github` 를 한 번 실행하면 자동으로 GitHub에 등록돼요)
 name: 앱 자동 배포
 
+# 비밀값을 넣기 전까지는 코드를 올릴 때마다 실패하지 않도록 수동 실행만 켜둠.
+# 비밀값을 넣은 뒤 자동으로 바꾸려면 아래 push 부분의 주석(#)을 지우면 돼요.
 on:
-  push:
-    branches:
-      - claude/pensive-mccarthy-5wusj0
-      - main
+  # push:
+  #   branches:
+  #     - claude/pensive-mccarthy-5wusj0
   workflow_dispatch: # GitHub 웹에서 "Run workflow" 버튼으로 직접 배포
 
 jobs:
