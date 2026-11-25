@@ -34,6 +34,12 @@ run() {
   fi
   trap 'rmdir "$HOME_DIR/lock" 2>/dev/null' EXIT
 
+  # 이 프로그램도 최신으로 (다음 확인부터 적용)
+  if curl -fsSL -o "$HOME_DIR/auto-deploy.new" "$SELF_URL" 2>/dev/null && bash -n "$HOME_DIR/auto-deploy.new" 2>/dev/null; then
+    cmp -s "$HOME_DIR/auto-deploy.new" "$HOME_DIR/auto-deploy.sh" || { mv "$HOME_DIR/auto-deploy.new" "$HOME_DIR/auto-deploy.sh"; chmod +x "$HOME_DIR/auto-deploy.sh"; log "자동 업데이트 프로그램을 최신으로 바꿈"; }
+  fi
+  rm -f "$HOME_DIR/auto-deploy.new"
+
   # 최신 버전(커밋) 확인
   latest="$(curl -fsSL -H 'Accept: application/vnd.github.sha' "https://api.github.com/repos/${OWNER_REPO}/commits/${BRANCH}" 2>/dev/null)"
   if [ -z "$latest" ] || [ ${#latest} -ne 40 ]; then log "업데이트 확인 실패 (인터넷 연결?)"; exit 0; fi
