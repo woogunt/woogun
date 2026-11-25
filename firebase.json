@@ -12,7 +12,8 @@
       "**/node_modules/**",
       "deploy-*",
       ".github/**",
-      ".firebaserc"
+      ".firebaserc",
+      "auto-deploy-*"
     ]
   },
   "emulators": {
