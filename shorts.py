@@ -170,14 +170,18 @@ def transcribe(path: Path, model_name: str, lang: str | None) -> list[Segment]:
         print("  faster-whisper 가 없어 자막을 건너뜁니다. (pip install faster-whisper)")
         return []
     print(f"  Whisper '{model_name}' 모델로 음성 인식 중... (처음 한 번은 모델 다운로드)")
-    model = WhisperModel(model_name, device="auto", compute_type="int8")
-    segs, info = model.transcribe(str(path), language=lang, word_timestamps=True)
-    result = []
-    for s in segs:
-        words = [Word(w.start, w.end, w.word) for w in (s.words or [])]
-        result.append(Segment(s.start, s.end, s.text.strip(), words))
-        print(f"    [{s.start:7.1f}s] {s.text.strip()}")
-    return result
+    try:
+        model = WhisperModel(model_name, device="auto", compute_type="int8")
+        segs, info = model.transcribe(str(path), language=lang, word_timestamps=True)
+        result = []
+        for s in segs:
+            words = [Word(w.start, w.end, w.word) for w in (s.words or [])]
+            result.append(Segment(s.start, s.end, s.text.strip(), words))
+            print(f"    [{s.start:7.1f}s] {s.text.strip()}")
+        return result
+    except Exception as e:  # 인터넷 끊김, 모델 다운로드 실패 등
+        print(f"  ⚠️ 음성 인식 실패 → 자막 없이 진행합니다. 원인: {e.__class__.__name__}: {str(e)[:120]}")
+        return []
 
 
 def parse_srt(path: Path) -> list[Segment]:

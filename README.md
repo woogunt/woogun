@@ -22,9 +22,34 @@ pip install -r requirements.txt
 ```
 
 ### Mac
+1. **터미널** 열기 (⌘+스페이스 → "터미널" 입력)
+2. Homebrew 설치 (이미 있으면 생략, 비밀번호를 물으면 맥 로그인 비밀번호 입력):
+   ```bash
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   ```
+   설치가 끝나면 화면에 나오는 `Next steps`의 `echo ... >> ~/.zprofile` 두 줄을 복사해서 실행하세요.
+3. 파이썬과 ffmpeg 설치:
+   ```bash
+   brew install python ffmpeg
+   ```
+4. 이 저장소를 내려받기: GitHub에서 브랜치 선택 → **Code → Download ZIP** → 압축 풀기
+
+#### 맥에서 실행 (제일 쉬운 방법)
+압축을 푼 폴더에서 **`run_mac.command`를 더블클릭**하세요.
+- 처음 한 번은 준비(1~3분)를 합니다.
+- "확인되지 않은 개발자" 경고가 뜨면: 파일을 **우클릭 → 열기 → 열기**
+- "권한 없음"이 뜨면 터미널에서 한 번만: `chmod +x ~/Downloads/woogun-*/run_mac.command`
+- 영상 파일을 창에 **끌어다 놓고 엔터** → 제목 입력 → 화면 방식 선택
+- 끝나면 결과 폴더가 자동으로 열립니다. **AirDrop으로 아이폰에 보내서** 확인하세요.
+
+#### 터미널로 직접 실행
 ```bash
-brew install python ffmpeg
-pip3 install -r requirements.txt
+cd ~/Downloads/woogun-*        # 압축 푼 폴더로 이동
+python3 -m venv .venv          # 처음 한 번만
+source .venv/bin/activate      # 터미널을 새로 열 때마다
+pip install -r requirements.txt  # 처음 한 번만
+python shorts.py 영상.mp4      # 파일은 끌어다 놓으면 경로가 자동 입력됨
+open output                    # 결과 폴더 열기
 ```
 
 ## 사용법
