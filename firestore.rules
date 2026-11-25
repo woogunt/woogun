@@ -32,7 +32,7 @@ service cloud.firestore {
       );
 
       match /{coll}/{id} {
-        allow read, write: if coll in ['events', 'bucket', 'diary', 'records', 'expenses', 'photos', 'places'] && isMember(roomId);
+        allow read, write: if coll in ['events', 'bucket', 'diary', 'comments', 'records', 'expenses', 'photos', 'places'] && isMember(roomId);
       }
     }
   }

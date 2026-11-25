@@ -498,3 +498,13 @@ body.reordering { cursor: grabbing; }
 /* 홈 화면 아이콘 미리보기 */
 .icon-row { display: flex; gap: 16px; align-items: center; }
 .app-icon-preview { width: 84px; height: 84px; border-radius: 20px; object-fit: cover; box-shadow: 0 4px 14px rgba(0,0,0,.15); flex: none; }
+
+/* 일기 댓글 */
+.cmts { margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(0,0,0,.08); display: grid; gap: 8px; }
+.cmt { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; row-gap: 2px; align-items: baseline; background: rgba(0,0,0,.035); border-radius: 14px; padding: 9px 12px; }
+.cmt-who { font-size: 13px; font-weight: 800; }
+.cmt-body { font-size: 14px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+.cmt-meta { grid-column: 2; font-size: 11.5px; color: var(--muted); }
+.cmt-del { font-size: 11.5px; padding: 0; }
+.cmt-add { justify-self: start; border: none; background: none; color: var(--muted); font: inherit; font-size: 14px; font-weight: 700; padding: 6px 2px; cursor: pointer; }
+.cmt-count { margin-top: 4px; font-size: 12.5px; font-weight: 700; color: var(--muted); }

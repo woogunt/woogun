@@ -6,7 +6,7 @@ const config = window.FIREBASE_CONFIG;
 
 const V = "10.14.1";
 const CDN = `https://www.gstatic.com/firebasejs/${V}`;
-export const COLLS = ["events", "bucket", "diary", "records", "expenses", "photos", "places"];
+export const COLLS = ["events", "bucket", "diary", "comments", "records", "expenses", "photos", "places"];
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 헷갈리는 0/O, 1/I 제외
 const INVITE_DAYS = 7;
 
@@ -234,7 +234,7 @@ export function subscribe(roomId, { onRoom, onColl, onError }) {
     ...COLLS.map((c) =>
       fs.onSnapshot(fs.collection(db, "rooms", roomId, c), (qs) => {
         onColl(c, qs.docs.map((d) => ({ id: d.id, ...d.data() })));
-      }, onError)
+      }, (e) => onError(Object.assign(e, { coll: c }))) // 목록 하나가 실패해도 연결 자체는 유지
     ),
   ];
   return () => unsubs.forEach((u) => u());

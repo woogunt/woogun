@@ -9,7 +9,7 @@
   const LOCAL_KEY = "uridul-local"; // 이 기기 전용 설정 (위젯 배치, 배경, 알림 읽음)
   const DAY = 86400000;
   const SHARE_ENABLED = !!(window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.projectId);
-  const COLLS = ["events", "bucket", "diary", "records", "expenses", "photos", "places"];
+  const COLLS = ["events", "bucket", "diary", "comments", "records", "expenses", "photos", "places"];
 
   const MOODS = ["😊", "🥰", "😴", "😢", "😠", "🤒"];
   const CULTURE = [
@@ -49,6 +49,7 @@
     events: [],    // { id, date, title, owner: "p1"|"p2"|"both", time?, memo?, by, at }
     bucket: [],    // { id, title, done, by, at }
     diary: [],     // { id, date, title, body, photo, by, at }
+    comments: [],  // { id, diaryId, body, by, at } — 일기 댓글
     records: [],   // { id, cat, title, date, rating, memo, photo, by, at }
     expenses: [],  // { id, date, title, amount, cat, payer, by, at }
     photos: [],    // { id, src, by, at }
@@ -205,7 +206,7 @@
   let artifactBackend = null; // claude.ai 링크(아티팩트)의 공유 저장소
   async function sync() {
     if (artifactBackend) return artifactBackend;
-    if (!syncMod) syncMod = await import("./sync.js?v=202611251410"); // 버전 표시로 예전 저장본 대신 새 파일
+    if (!syncMod) syncMod = await import("./sync.js?v=202611252222"); // 버전 표시로 예전 저장본 대신 새 파일
     await syncMod.init();
     return syncMod;
   }
@@ -335,6 +336,7 @@
 
   const byAtDesc = (a, b) => (b.at || 0) - (a.at || 0);
   const SORTERS = {
+    comments: (a, b) => (a.at || 0) - (b.at || 0),
     events: (a, b) => a.date.localeCompare(b.date),
     diary: (a, b) => b.date.localeCompare(a.date) || byAtDesc(a, b),
     records: (a, b) => (b.date || "").localeCompare(a.date || "") || byAtDesc(a, b),
@@ -377,6 +379,7 @@
       },
       onError(e) {
         console.error(e);
+        if (e && e.coll) return; // 일정·댓글 같은 목록 하나의 오류로는 로그아웃하지 않음
         if (session && session.artifact) { setBadge(e && e.code === "revoked" ? "연결 끊김" : "오프라인", true); return; }
         if (e.code === "permission-denied" || e.message === "not-found") {
           setBadge("연결 끊김", true);
@@ -844,9 +847,11 @@
         <div class="diary-meta"><span class="who-${d.by === "p2" ? "p2" : "p1"}">${esc(nameOf(d.by))}</span> · ${fmtLong(dt)}</div>
         <div class="diary-title">${esc(d.title)}</div>
         <div class="clamp">${esc(d.body)}</div>
+        ${commentsOf(d.id).length ? `<div class="cmt-count">💬 댓글 ${commentsOf(d.id).length}</div>` : ""}
       </div>
     </div>`;
   }
+  const commentsOf = (diaryId) => state.comments.filter((c) => c.diaryId === diaryId);
 
   function renderHome() {
     const invite = shared() && session.artifact && memberCount < 2
@@ -1179,7 +1184,15 @@
           <div class="diary-meta"><span class="who-${d.by === "p2" ? "p2" : "p1"}">${esc(nameOf(d.by))}</span> · ${fmtLong(parse(d.date))}</div>
           <div class="diary-title" style="font-size:18px;margin:6px 0 8px">${esc(d.title)}</div>
           <div style="white-space:pre-wrap;line-height:1.7;overflow-wrap:anywhere">${esc(d.body)}</div>
-          ${d.by === role() ? `<div class="rec-actions"><button class="link" data-action="diary-edit" data-id="${esc(d.id)}">수정</button><button class="link" data-action="del" data-coll="diary" data-id="${esc(d.id)}" data-confirm="이 일기를 지울까요?">삭제</button></div>` : ""}
+          ${d.by === role() ? `<div class="rec-actions"><button class="link" data-action="diary-edit" data-id="${esc(d.id)}">수정</button><button class="link" data-action="del" data-coll="diary" data-id="${esc(d.id)}" data-confirm="이 일기를 지울까요? 달린 댓글도 함께 지워져요.">삭제</button></div>` : ""}
+          <div class="cmts">
+            ${commentsOf(d.id).map((c) => `<div class="cmt">
+              <span class="cmt-who who-${c.by === "p2" ? "p2" : "p1"}">${esc(nameOf(c.by))}</span>
+              <span class="cmt-body">${esc(c.body)}</span>
+              <span class="cmt-meta">${timeAgo(c.at)}${c.by === role() ? ` · <button class="link cmt-del" data-action="del" data-coll="comments" data-id="${esc(c.id)}" data-confirm="이 댓글을 지울까요?">삭제</button>` : ""}</span>
+            </div>`).join("")}
+            <button class="cmt-add" data-action="comment-new" data-id="${esc(d.id)}">💬 ${commentsOf(d.id).length ? "댓글 달기" : "첫 댓글 달기"}</button>
+          </div>
         </div>`).join("");
       },
     },
@@ -1470,6 +1483,10 @@
     const out = [];
     const push = (list, fn) => list.filter((x) => x.by === who && x.at).forEach((x) => out.push({ at: x.at, ...fn(x) }));
     push(state.diary, (x) => ({ em: "✍️", text: `${n}님이 일기를 썼어요: ${x.title}`, photo: x.photo }));
+    push(state.comments, (x) => {
+      const d = state.diary.find((y) => y.id === x.diaryId);
+      return { em: "💬", text: `${n}님이 ${d ? `"${d.title}"에 ` : ""}댓글을 남겼어요: ${x.body}` };
+    });
     push(state.photos, (x) => ({ em: "📸", text: x.place ? `${n}님이 ${placeName(x.place)}에 사진을 넣었어요` : `${n}님이 사진을 올렸어요`, photo: x.src }));
     push(state.events, (x) => ({ em: "📅", text: `${n}님이 일정을 추가했어요: ${fmtW(parse(x.date))} ${x.title}` }));
     push(state.records, (x) => ({ em: "📜", text: `${n}님이 기록을 남겼어요: ${x.title}`, photo: x.photo }));
@@ -1617,7 +1634,19 @@
 
     del: async (el) => {
       if (el.dataset.confirm && !(await ask(el.dataset.confirm, "삭제"))) return;
-      store.remove(el.dataset.coll, el.dataset.id);
+      const { coll, id } = el.dataset;
+      const orphans = coll === "diary" ? commentsOf(id) : [];
+      await store.remove(coll, id);
+      for (const c of orphans) await store.remove("comments", c.id);
+    },
+    "comment-new": (el) => {
+      const d = state.diary.find((x) => x.id === el.dataset.id); if (!d) return;
+      openForm({
+        title: `"${d.title}"에 댓글`,
+        fields: [{ name: "body", label: `${nameOf(role())}의 댓글`, type: "textarea", rows: 3, required: true, max: 300, placeholder: "따뜻한 한마디를 남겨보세요" }],
+        okText: "댓글 달기",
+        onSubmit: (v) => store.add("comments", { id: uid(), diaryId: d.id, body: v.body }),
+      });
     },
 
     "diary-new": () => diaryForm(null),
