@@ -494,3 +494,7 @@ body.reordering { cursor: grabbing; }
   background: rgba(40, 60, 95, 0.45); padding: 4px 9px; border-radius: 99px;
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); white-space: nowrap;
 }
+
+/* 홈 화면 아이콘 미리보기 */
+.icon-row { display: flex; gap: 16px; align-items: center; }
+.app-icon-preview { width: 84px; height: 84px; border-radius: 20px; object-fit: cover; box-shadow: 0 4px 14px rgba(0,0,0,.15); flex: none; }

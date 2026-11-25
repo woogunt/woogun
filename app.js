@@ -171,7 +171,7 @@
   let artifactBackend = null; // claude.ai 링크(아티팩트)의 공유 저장소
   async function sync() {
     if (artifactBackend) return artifactBackend;
-    if (!syncMod) syncMod = await import("./sync.js?v=202611251350"); // 버전 표시로 예전 저장본 대신 새 파일
+    if (!syncMod) syncMod = await import("./sync.js?v=202611251359"); // 버전 표시로 예전 저장본 대신 새 파일
     await syncMod.init();
     return syncMod;
   }
@@ -1282,6 +1282,17 @@
               <button class="icon-sq" data-action="w-remove" data-k="${k}" aria-label="${WIDGETS[k].name} 빼기">${ICON.close}</button></li>`).join("") || `<li class="empty">홈 화면에 블럭이 없어요</li>`}</ul>
             ${mine.length < Object.keys(WIDGETS).length ? `<button class="btn primary full" style="margin-top:10px" data-action="gallery">＋ 블럭 추가하기</button>` : ""}
           </div>
+          <div class="card stack"><h3 style="margin:0">홈 화면 아이콘</h3>
+            <div class="icon-row">
+              <img class="app-icon-preview" src="${appIcon() || "icon-180.png"}" alt="지금 아이콘" />
+              <div class="stack" style="gap:8px;flex:1">
+                <button class="btn primary" data-action="icon-change">📷 우리 사진으로 바꾸기</button>
+                ${appIcon() ? `<button class="btn" data-action="icon-reset">기본 하트로</button>` : ""}
+              </div>
+            </div>
+            <p class="muted small" style="margin:0">바꾼 사진은 ${esc(nameOf(other()))}님 폰에도 똑같이 적용돼요.<br />
+              폰 홈 화면 아이콘은 추가할 때 정해져요. 바꾼 뒤에는 홈 화면의 앱을 <b>지우고 다시 "홈 화면에 추가"</b>해 주세요. (기록은 그대로예요)</p>
+          </div>
           <div class="card"><h3>나는 누구인가요?</h3>
             <p class="muted small" style="margin:-4px 0 10px">이 기기를 쓰는 사람을 골라주세요. 잘못 되어 있으면 여기서 바꿀 수 있어요.</p>
             <div class="seg" style="margin:0">${["p1", "p2"].map((r) =>
@@ -1678,6 +1689,20 @@
         ACTIONS["share-invite"]();
       } catch (err) { console.error(err); toast("초대를 만들지 못했어요. 인터넷 연결을 확인해주세요."); }
     },
+    "icon-change": async () => {
+      const [f] = await pickImages(); if (!f) return;
+      try {
+        const icon = await makeIcon(f);
+        await store.setProfile({ ...state.profile, icon });
+        local.icon = icon; saveLocal(); applyTitle(); render();
+        toast("아이콘을 바꿨어요. 홈 화면의 앱을 지우고 다시 추가해 주세요");
+      } catch (err) { console.error(err); toast("사진을 읽을 수 없어요."); }
+    },
+    "icon-reset": async () => {
+      await store.setProfile({ ...state.profile, icon: "" });
+      local.icon = ""; saveLocal(); applyTitle(); render();
+      toast("기본 하트 아이콘으로 바꿨어요");
+    },
     // 이 기기의 사람(나) 바꾸기
     "switch-role": async (el) => {
       const to = el.dataset.v, from = role();
@@ -1932,6 +1957,7 @@
     const f = new FormData(e.target);
     document.activeElement?.blur();
     await store.setProfile({
+      ...state.profile,
       title: (f.get("title") || "").trim(),
       [role()]: f.get("me").trim(),
       [other()]: f.get("you").trim(),
@@ -2160,13 +2186,46 @@
   function appTitle() {
     return (state.profile && state.profile.title) || local.title || invitedTitle() || DEFAULT_TITLE;
   }
+  // ---- 홈 화면 아이콘 (둘이 같은 사진, 설정에서 바꿈) ----
+  function appIcon() {
+    // 공유된 값이 있으면(비워둔 것 포함) 그걸 따르고, 아직 모를 때만 이 기기에 저장해둔 값
+    const ic = state.profile && state.profile.icon !== undefined ? state.profile.icon : local.icon || "";
+    return safeImg(ic);
+  }
+  let lastIcon = null;
+  function applyIcon() {
+    const ic = appIcon();
+    if (state.profile && (state.profile.icon || "") !== (local.icon || "")) { local.icon = state.profile.icon || ""; saveLocal(); }
+    if (ic === lastIcon) return false;
+    lastIcon = ic;
+    $("#appleIcon").setAttribute("href", ic || "icon-180.png");
+    $("#favIcon").setAttribute("href", ic || "favicon.png");
+    return true;
+  }
+  // 사진 → 가운데를 정사각형으로 잘라 아이콘 크기로
+  function makeIcon(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const side = Math.min(img.width, img.height);
+        const c = document.createElement("canvas"); c.width = c.height = 512;
+        c.getContext("2d").drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, 512, 512);
+        URL.revokeObjectURL(img.src);
+        resolve(c.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
   let manifestURL = null;
   function applyTitle() {
+    const iconChanged = applyIcon();
     const t = appTitle();
     if (state.profile && state.profile.title !== undefined && local.title !== state.profile.title) {
       local.title = state.profile.title; saveLocal(); // 다음에 열 때 로그인 화면에도 이 이름이 보이도록
     }
-    if (document.title === t) return;
+    if (document.title === t && !iconChanged) return;
     document.title = t;
     $("#appName").textContent = t;
     const apple = document.querySelector('meta[name="apple-mobile-web-app-title"]');
@@ -2175,7 +2234,10 @@
     try {
       const link = document.querySelector('link[rel="manifest"]');
       if (link && location.protocol.startsWith("http")) {
-        const m = { name: t, short_name: t.slice(0, 12), start_url: location.origin + location.pathname, display: "standalone", background_color: "#dbe7f7", theme_color: "#7ea6e0", lang: "ko" };
+        const ic = appIcon();
+        const icons = ic ? [{ src: ic, sizes: "512x512", type: ic.startsWith("data:image/png") ? "image/png" : "image/jpeg" }]
+          : [{ src: new URL("icon-192.png", location.href).href, sizes: "192x192", type: "image/png" }, { src: new URL("icon-512.png", location.href).href, sizes: "512x512", type: "image/png" }];
+        const m = { name: t, short_name: t.slice(0, 12), start_url: location.origin + location.pathname, display: "standalone", background_color: "#dbe7f7", theme_color: "#7ea6e0", lang: "ko", icons };
         if (manifestURL) URL.revokeObjectURL(manifestURL);
         manifestURL = URL.createObjectURL(new Blob([JSON.stringify(m)], { type: "application/manifest+json" }));
         link.setAttribute("href", manifestURL);
