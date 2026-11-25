@@ -8,7 +8,8 @@ fail() { echo; echo "문제가 생겼어요. 이 창을 캡처해서 Claude에�
 
 echo "[1/3] 최신 앱을 받는 중..."
 curl -fsSL -o app.zip "$ZIPURL" || fail
-unzip -q app.zip || fail
+# 맥 기본 도구(ditto)로 풀기: unzip은 한글 파일 이름에서 멈출 수 있음
+ditto -x -k app.zip . || fail
 cd woogun-claude-pensive-mccarthy-5wusj0 || fail
 
 echo "[2/3] https://woogunt-a9c74.web.app 에 배포하는 중..."
