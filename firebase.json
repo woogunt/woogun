@@ -13,7 +13,8 @@
       "deploy-*",
       ".github/**",
       ".firebaserc",
-      "auto-deploy-*"
+      "auto-deploy-*",
+      "push-relay/**"
     ],
     "headers": [
       {

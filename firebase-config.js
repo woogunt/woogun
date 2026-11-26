@@ -11,3 +11,11 @@ window.FIREBASE_CONFIG = {
   messagingSenderId: "502888567138",
   appId: "1:502888567138:web:84de079bd2f185cf0b9c3b",
 };
+
+// 휴대폰 알림 설정 (README "휴대폰 알림" 참고). 둘 다 공개돼도 괜찮은 값이에요.
+//   vapidKey: Firebase 콘솔 → 프로젝트 설정 → 클라우드 메시징 → 웹 푸시 인증서의 "키 쌍"
+//   relayUrl: Google Apps Script 웹 앱 주소 (push-relay 폴더의 코드)
+window.PUSH_CONFIG = {
+  vapidKey: "",
+  relayUrl: "",
+};

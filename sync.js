@@ -12,7 +12,7 @@ const INVITE_DAYS = 7;
 
 export const enabled = !!(config && config.projectId);
 
-let fs, db, auth, A;
+let fs, db, auth, A, appInst, M, messaging;
 
 export async function init() {
   if (db) return;
@@ -24,6 +24,7 @@ export async function init() {
   fs = fsMod;
   A = authMod;
   const app = appMod.initializeApp(config);
+  appInst = app;
   auth = A.getAuth(app);
   db = fs.getFirestore(app);
   if (config.emulatorHost) {
@@ -246,9 +247,39 @@ export const ops = {
   remove: (roomId, coll, id) => fs.deleteDoc(fs.doc(db, "rooms", roomId, coll, id)),
   setProfile: (roomId, profile) => fs.updateDoc(roomRef(roomId), { profile }),
   setWidgets: (roomId, widgets) => fs.updateDoc(roomRef(roomId), { widgets }),
-  // 휴대폰 알림 받을 주소 (ntfy 주제 이름). 비우면 알림 끔
-  setNotify: (roomId, role, topic) =>
-    fs.updateDoc(roomRef(roomId), new fs.FieldPath("notify", role), topic || fs.deleteField()),
+  // 이 사람의 휴대폰 알림 토큰 (FCM). 비우면 알림 끔
+  setPushToken: (roomId, role, token) =>
+    fs.updateDoc(roomRef(roomId), new fs.FieldPath("push", role), token || fs.deleteField()),
   setMood: (roomId, date, role, mood) =>
     fs.updateDoc(roomRef(roomId), new fs.FieldPath("moods", date, role), mood ?? fs.deleteField()),
 };
+
+// ---------- 휴대폰 알림 (Firebase Cloud Messaging, 무료) ----------
+async function loadMessaging() {
+  if (messaging) return messaging;
+  await init();
+  M = await import(`${CDN}/firebase-messaging.js`);
+  if (!(await M.isSupported())) return null;
+  messaging = M.getMessaging(appInst);
+  return messaging;
+}
+export async function pushSupported() {
+  try { return !!(await loadMessaging()); } catch { return false; }
+}
+// 알림 허용은 버튼을 누른 순간에 이미 받아둔 상태여야 함
+export async function enablePush(vapidKey) {
+  const m = await loadMessaging();
+  if (!m) throw friendly("이 브라우저에서는 휴대폰 알림을 쓸 수 없어요.");
+  const reg = await navigator.serviceWorker.register("firebase-messaging-sw.js");
+  await navigator.serviceWorker.ready;
+  const token = await M.getToken(m, { vapidKey, serviceWorkerRegistration: reg });
+  if (!token) throw friendly("알림 토큰을 받지 못했어요. 알림 허용을 확인해주세요.");
+  return token;
+}
+export async function disablePush() {
+  try { const m = await loadMessaging(); if (m) await M.deleteToken(m); } catch { /* 무시 */ }
+}
+// 앱을 보고 있을 때 온 알림 (폰 알림 대신 앱 안에서 보여줌)
+export async function onForegroundPush(cb) {
+  try { const m = await loadMessaging(); if (m) M.onMessage(m, cb); } catch { /* 무시 */ }
+}
