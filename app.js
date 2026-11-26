@@ -2594,8 +2594,8 @@
       const d = new Date(deployedAt);
       if (isNaN(d)) return;
       const el = $("#deployInfo");
-      el.textContent = `배포 ${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-      el.title = `마지막 배포: ${d.toLocaleString("ko-KR")}`;
+      el.textContent = `업데이트 ${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      el.title = `마지막 업데이트: ${d.toLocaleString("ko-KR")}`;
       el.classList.remove("hidden");
     } catch { /* 기록이 없으면 표시 안 함 */ }
   }
