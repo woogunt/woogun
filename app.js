@@ -206,7 +206,7 @@
   let artifactBackend = null; // claude.ai 링크(아티팩트)의 공유 저장소
   async function sync() {
     if (artifactBackend) return artifactBackend;
-    if (!syncMod) syncMod = await import("./sync.js?v=202611252222"); // 버전 표시로 예전 저장본 대신 새 파일
+    if (!syncMod) syncMod = await import("./sync.js?v=202611260124"); // 버전 표시로 예전 저장본 대신 새 파일
     await syncMod.init();
     return syncMod;
   }
@@ -294,9 +294,12 @@
 
   function setBadge(text, off) {
     const b = $("#syncBadge");
+    const live = !!text && text.startsWith("● "); // 공유 중이면 초록 불이 깜빡임
     b.classList.toggle("hidden", !text);
     b.classList.toggle("off", !!off);
-    b.textContent = text || "";
+    b.classList.toggle("live", live);
+    b.textContent = live ? text.slice(2) : text || "";
+    if (live) b.insertAdjacentHTML("afterbegin", '<i class="live-dot" aria-hidden="true"></i>');
   }
 
   async function remote(fn) {
