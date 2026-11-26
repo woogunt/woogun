@@ -16,7 +16,7 @@
   <link rel="icon" type="image/png" href="favicon.png" id="favIcon" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=202611260844" />
+  <link rel="stylesheet" href="style.css?v=202611262146" />
 </head>
 <body>
   <div id="bg" class="bg"></div>
@@ -104,6 +104,8 @@
 
   <div id="viewer" class="viewer hidden">
     <img id="viewerImg" alt="" />
+    <video id="viewerVideo" class="hidden" controls playsinline preload="metadata"></video>
+    <div id="viewerLoading" class="viewer-cap hidden">영상을 불러오는 중…</div>
     <div id="viewerCap" class="viewer-cap"></div>
     <div class="viewer-actions">
       <button class="btn danger" id="viewerDel">삭제</button>
@@ -123,9 +125,9 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script src="firebase-config.js?v=202611260844"></script>
-  <script src="maps/kr.js?v=202611260844"></script>
-  <script src="maps/sgg-index.js?v=202611260844"></script>
-  <script src="app.js?v=202611260844"></script>
+  <script src="firebase-config.js?v=202611262146"></script>
+  <script src="maps/kr.js?v=202611262146"></script>
+  <script src="maps/sgg-index.js?v=202611262146"></script>
+  <script src="app.js?v=202611262146"></script>
 </body>
 </html>

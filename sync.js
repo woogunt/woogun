@@ -283,3 +283,27 @@ export async function disablePush() {
 export async function onForegroundPush(cb) {
   try { const m = await loadMessaging(); if (m) M.onMessage(m, cb); } catch { /* 무시 */ }
 }
+
+// ---------- 영상: 무료 요금제에는 파일 저장소가 없어, 조각(900KB)으로 나눠 Firestore에 저장 ----------
+const MEDIA_CHUNK = 900 * 1024;
+const mediaRef = (roomId, id, i) => fs.doc(db, "rooms", roomId, "media", `${id}_${i}`);
+export async function putMedia(roomId, id, blob, onProgress) {
+  await init();
+  const buf = new Uint8Array(await blob.arrayBuffer());
+  const n = Math.ceil(buf.length / MEDIA_CHUNK);
+  for (let i = 0; i < n; i++) {
+    await fs.setDoc(mediaRef(roomId, id, i), { i, data: fs.Bytes.fromUint8Array(buf.subarray(i * MEDIA_CHUNK, (i + 1) * MEDIA_CHUNK)) });
+    if (onProgress) onProgress((i + 1) / n);
+  }
+  return n;
+}
+export async function getMedia(roomId, id, n, mime) {
+  await init();
+  const snaps = await Promise.all(Array.from({ length: n }, (_, i) => fs.getDoc(mediaRef(roomId, id, i))));
+  if (snaps.some((s) => !s.exists())) throw new Error("media missing");
+  return new Blob(snaps.map((s) => s.data().data.toUint8Array()), { type: mime || "video/mp4" });
+}
+export async function deleteMedia(roomId, id, n) {
+  await init();
+  await Promise.all(Array.from({ length: n }, (_, i) => fs.deleteDoc(mediaRef(roomId, id, i)).catch(() => {})));
+}

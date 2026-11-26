@@ -189,10 +189,10 @@
     });
   }
 
-  function pickImages({ multiple = false, capture = false } = {}) {
+  function pickImages({ multiple = false, capture = false, video = false } = {}) {
     return new Promise((resolve) => {
       const input = document.createElement("input");
-      input.type = "file"; input.accept = "image/*"; input.multiple = multiple;
+      input.type = "file"; input.accept = video ? "image/*,video/*" : "image/*"; input.multiple = multiple;
       if (capture) input.setAttribute("capture", "environment");
       input.onchange = () => resolve([...input.files]);
       input.click();
@@ -206,7 +206,7 @@
   let artifactBackend = null; // claude.ai 링크(아티팩트)의 공유 저장소
   async function sync() {
     if (artifactBackend) return artifactBackend;
-    if (!syncMod) syncMod = await import("./sync.js?v=202611260844"); // 버전 표시로 예전 저장본 대신 새 파일
+    if (!syncMod) syncMod = await import("./sync.js?v=202611262146"); // 버전 표시로 예전 저장본 대신 새 파일
     await syncMod.init();
     return syncMod;
   }
@@ -1010,12 +1010,13 @@
   const IS_STANDALONE = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
   const NOTIFY_TEXT = {
     diary: "일기를 썼어요 ✍️", comments: "일기에 댓글을 남겼어요 💬", photos: "사진을 올렸어요 📸",
-    events: "일정을 추가했어요 📅", records: "기록을 남겼어요 📜", expenses: "데이트 지출을 기록했어요 💰",
+    events: "일정을 추가했어요 📅", records: "기록을 남겼어요 📜", videos: "영상을 올렸어요 🎬", expenses: "데이트 지출을 기록했어요 💰",
     bucket: "버킷리스트를 추가했어요 ✅", places: "데이트 지도에 표시했어요 🗺️",
   };
   const notifyQueue = {};
   let notifyTimer = null;
-  function notifyPartner(coll) {
+  function notifyPartner(coll, item) {
+    if (coll === "photos" && item && item.kind === "video") coll = "videos";
     if (!PUSH_READY || !shared() || session.artifact || !NOTIFY_TEXT[coll]) return;
     const token = state.push && state.push[other()];
     if (!token) return;
@@ -1270,8 +1271,7 @@
             </div>
           </div>
           ${list.length ? `<div class="card day-list">${list.join("")}</div>` : `<p class="muted day-empty">이 날 일정이 없어요</p>`}
-          ${selPhotos.length ? `<div class="photo-grid day-photos">${selPhotos.map((p) =>
-            `<img src="${p.src}" data-action="view-photo" data-id="${esc(p.id)}" alt="${fmtW(parse(sel))} 사진" loading="lazy" />`).join("")}</div>` : ""}`;
+          ${selPhotos.length ? `<div class="photo-grid day-photos">${selPhotos.map((p) => mediaTile(p, fmtW(parse(sel)))).join("")}</div>` : ""}`;
       },
     },
 
@@ -1381,9 +1381,9 @@
       html() {
         const pics = state.photos.filter((p) => safeImg(p.src));
         return `<div class="card">${WIDGETS.album.html().replace(/<div class="w-title">[\s\S]*?<\/div>/, "")}
-            <button class="btn full" style="margin-top:8px" data-action="photo-add">앨범에서 여러 장 올리기</button>
-            <p class="muted small">사진은 압축해서 저장돼요.</p></div>
-          <div class="photo-grid">${pics.map((p) => `<img src="${p.src}" data-action="view-photo" data-id="${esc(p.id)}" alt="사진" loading="lazy" />`).join("")}</div>`;
+            <button class="btn full" style="margin-top:8px" data-action="photo-add">앨범에서 사진·영상 올리기</button>
+            <p class="muted small">사진은 압축해서 저장돼요. 영상은 30MB까지 올릴 수 있어요 (아이폰 기준 1080p 10~20초).</p></div>
+          <div class="photo-grid">${pics.map((p) => mediaTile(p, "앨범")).join("")}</div>`;
       },
     },
 
@@ -1606,7 +1606,7 @@
       const d = state.diary.find((y) => y.id === x.diaryId);
       return { em: "💬", text: `${n}님이 ${d ? `"${d.title}"에 ` : ""}댓글을 남겼어요: ${x.body}` };
     });
-    push(state.photos, (x) => ({ em: "📸", text: x.place ? `${n}님이 ${placeName(x.place)}에 사진을 넣었어요` : `${n}님이 사진을 올렸어요`, photo: x.src }));
+    push(state.photos, (x) => ({ em: x.kind === "video" ? "🎬" : "📸", text: x.place ? `${n}님이 ${placeName(x.place)}에 사진을 넣었어요` : x.kind === "video" ? `${n}님이 영상을 올렸어요` : `${n}님이 사진을 올렸어요`, photo: x.src }));
     push(state.events, (x) => ({ em: "📅", text: `${n}님이 일정을 추가했어요: ${fmtW(parse(x.date))} ${x.title}` }));
     push(state.records, (x) => ({ em: "📜", text: `${n}님이 기록을 남겼어요: ${x.title}`, photo: x.photo }));
     push(state.expenses, (x) => ({ em: "💰", text: `${n}님이 지출을 기록했어요: ${x.title} ${won(x.amount)}` }));
@@ -1697,16 +1697,107 @@
   }
 
   async function addPhotos(capture, extra = {}) {
-    const files = await pickImages({ multiple: !capture, capture });
+    const files = await pickImages({ multiple: !capture, capture, video: true });
     if (!files.length) return;
-    if (shared()) toast("사진을 올리는 중…");
+    if (shared() && files.some((f) => !isVideo(f))) toast("사진을 올리는 중…");
     for (const f of files) {
+      if (isVideo(f)) { await addVideo(f, extra); continue; }
       try {
         // 공유 모드: 문서 1개당 1MB 제한이 있어 조금 더 작게 저장
         const src = await resizeImage(f, shared() ? 960 : 1080);
         await store.add("photos", { id: uid(), src, date: todayStr(), ...extra });
       } catch { /* 읽을 수 없는 파일은 건너뜀 */ }
     }
+  }
+
+  // ---- 영상 ----
+  const VIDEO_MAX = 30 * 1024 * 1024; // 무료 저장 공간(1GB)을 아끼려고 영상 하나 30MB까지
+  const isVideo = (f) => /^video\//.test(f.type) || /\.(mov|mp4|m4v|webm)$/i.test(f.name || "");
+  const fmtDur = (sec) => { sec = Math.round(sec || 0); return `${Math.floor(sec / 60)}:${pad(sec % 60)}`; };
+  // 영상 첫 장면을 미리보기 사진으로
+  function videoPoster(file) {
+    return new Promise((resolve) => {
+      const v = document.createElement("video");
+      v.muted = true; v.playsInline = true; v.preload = "metadata";
+      const url = URL.createObjectURL(file);
+      let done = false;
+      const finish = (poster) => { if (done) return; done = true; URL.revokeObjectURL(url); resolve({ poster, duration: v.duration || 0 }); };
+      v.onloadeddata = () => { try { v.currentTime = Math.min(0.5, (v.duration || 1) / 3); } catch { finish(""); } };
+      v.onseeked = () => {
+        try {
+          const sc = Math.min(1, 640 / Math.max(v.videoWidth || 1, v.videoHeight || 1));
+          const c = document.createElement("canvas");
+          c.width = Math.max(1, Math.round((v.videoWidth || 320) * sc)); c.height = Math.max(1, Math.round((v.videoHeight || 240) * sc));
+          c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+          finish(c.toDataURL("image/jpeg", 0.72));
+        } catch { finish(""); }
+      };
+      v.onerror = () => finish("");
+      setTimeout(() => finish(""), 8000);
+      v.src = url;
+    });
+  }
+  // 미리보기를 못 만들면 쓰는 기본 그림
+  function fallbackPoster() {
+    const c = document.createElement("canvas"); c.width = 320; c.height = 320;
+    const g = c.getContext("2d");
+    const grd = g.createLinearGradient(0, 0, 0, 320); grd.addColorStop(0, "#7ea6e0"); grd.addColorStop(1, "#ffb6c6");
+    g.fillStyle = grd; g.fillRect(0, 0, 320, 320);
+    g.fillStyle = "rgba(255,255,255,.9)"; g.beginPath(); g.moveTo(130, 110); g.lineTo(130, 210); g.lineTo(215, 160); g.closePath(); g.fill();
+    return c.toDataURL("image/jpeg", 0.8);
+  }
+  async function addVideo(file, extra = {}) {
+    if (!shared() || session.artifact) { toast("영상은 구글 로그인으로 함께 쓸 때만 올릴 수 있어요."); return; }
+    if (file.size > VIDEO_MAX) {
+      await ask(`영상이 너무 커요 (${Math.round(file.size / 1048576)}MB).\n30MB까지 올릴 수 있어요.\n\n사진 앱에서 영상을 열고 [편집]으로 길이를 짧게 자른 뒤 다시 올려주세요.`, "확인");
+      return;
+    }
+    try {
+      const { poster, duration } = await videoPoster(file);
+      const id = uid();
+      const s = await sync();
+      toast("영상을 올리는 중… 0%");
+      const chunks = await s.putMedia(session.roomId, id, file, (p) => toast(`영상을 올리는 중… ${Math.round(p * 100)}%`));
+      await store.add("photos", { id, kind: "video", src: poster || fallbackPoster(), chunks, mime: file.type || "video/mp4", size: file.size, duration, date: todayStr(), ...extra });
+      toast("영상을 올렸어요 🎬");
+    } catch (err) {
+      console.error(err);
+      toast("영상을 올리지 못했어요. 인터넷 연결을 확인해주세요.");
+    }
+  }
+  const videoURLs = new Map(); // 한 번 받은 영상은 다시 받지 않음
+  async function openVideo(p) {
+    const vid = $("#viewerVideo");
+    $("#viewerImg").classList.add("hidden");
+    vid.classList.remove("hidden"); vid.poster = safeImg(p.src); vid.removeAttribute("src");
+    $("#viewerLoading").classList.remove("hidden");
+    try {
+      let url = videoURLs.get(p.id);
+      if (!url) {
+        const s = await sync();
+        url = URL.createObjectURL(await s.getMedia(session.roomId, p.id, p.chunks, p.mime));
+        videoURLs.set(p.id, url);
+      }
+      if (viewing !== p.id) return;
+      vid.src = url;
+      vid.play().catch(() => {});
+    } catch (err) {
+      console.error(err);
+      toast("영상을 불러오지 못했어요.");
+    } finally { $("#viewerLoading").classList.add("hidden"); }
+  }
+  function closeViewer() {
+    const vid = $("#viewerVideo");
+    vid.pause(); vid.removeAttribute("src"); vid.load(); vid.classList.add("hidden");
+    $("#viewerImg").classList.remove("hidden");
+    $("#viewerLoading").classList.add("hidden");
+    $("#viewer").classList.add("hidden");
+  }
+  // 사진/영상 칸 (영상은 ▶ 표시)
+  function mediaTile(p, alt) {
+    if (p.kind === "video") return `<div class="vid-tile" data-action="view-photo" data-id="${esc(p.id)}" role="button" aria-label="영상 보기">
+      <img src="${p.src}" alt="${esc(alt)} 영상" loading="lazy" /><span class="vid-badge">▶ ${fmtDur(p.duration)}</span></div>`;
+    return `<img src="${p.src}" data-action="view-photo" data-id="${esc(p.id)}" alt="${esc(alt)} 사진" loading="lazy" />`;
   }
 
   function moveWidget(k, dir) {
@@ -1852,6 +1943,7 @@
       const p = state.photos.find((x) => x.id === el.dataset.id); if (!p) return;
       viewing = p.id;
       $("#viewerImg").src = safeImg(p.src);
+      if (p.kind === "video") openVideo(p);
       $("#viewerCap").textContent = `${nameOf(p.by)} · ${p.date ? fmt(parse(p.date)) : fmt(new Date(p.at))}${p.place ? ` · ${placeName(p.place)}` : ""}`;
       $("#viewer").classList.remove("hidden");
     },
@@ -2187,11 +2279,14 @@
     local.lastSeen = Date.now(); saveLocal(); renderHome();
   });
 
-  $("#viewerClose").addEventListener("click", () => $("#viewer").classList.add("hidden"));
+  $("#viewerClose").addEventListener("click", closeViewer);
   $("#viewerDel").addEventListener("click", async () => {
-    if (!(await ask("이 사진을 지울까요?", "삭제"))) return;
-    store.remove("photos", viewing);
-    $("#viewer").classList.add("hidden");
+    const p = state.photos.find((x) => x.id === viewing);
+    const isVid = p && p.kind === "video";
+    if (!(await ask(isVid ? "이 영상을 지울까요?" : "이 사진을 지울까요?", "삭제"))) return;
+    closeViewer();
+    await store.remove("photos", viewing);
+    if (isVid && shared() && !session.artifact) (await sync()).deleteMedia(session.roomId, p.id, p.chunks).catch(() => {});
   });
 
   // 설정 폼
