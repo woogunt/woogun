@@ -206,7 +206,7 @@
   let artifactBackend = null; // claude.ai 링크(아티팩트)의 공유 저장소
   async function sync() {
     if (artifactBackend) return artifactBackend;
-    if (!syncMod) syncMod = await import("./sync.js?v=202611260840"); // 버전 표시로 예전 저장본 대신 새 파일
+    if (!syncMod) syncMod = await import("./sync.js?v=202611260844"); // 버전 표시로 예전 저장본 대신 새 파일
     await syncMod.init();
     return syncMod;
   }
@@ -1070,6 +1070,51 @@
     renderPage(true);
   }
   $("#pageBack").addEventListener("click", back);
+
+  // ---- 아이폰처럼: 화면 왼쪽 가장자리에서 오른쪽으로 밀면 뒤로 ----
+  const EDGE = 32;          // 왼쪽 가장자리 몇 px 안에서 시작해야 하는지
+  let edge = null;          // { x0, y0, t0, dx, active }
+  const pageEl = $("#page");
+  pageEl.addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1 || !pageStack.length || !$("#modal").classList.contains("hidden")) return;
+    const t = e.touches[0];
+    if (t.clientX > EDGE) return;
+    edge = { x0: t.clientX, y0: t.clientY, t0: Date.now(), dx: 0, active: false };
+  }, { passive: true });
+  pageEl.addEventListener("touchmove", (e) => {
+    if (!edge) return;
+    const t = e.touches[0];
+    const dx = t.clientX - edge.x0, dy = t.clientY - edge.y0;
+    if (!edge.active) {
+      if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { edge = null; return; } // 위아래 스크롤이면 무시
+      if (dx < 8) return;
+      edge.active = true;
+      pageEl.classList.add("swiping");
+    }
+    if (e.cancelable) e.preventDefault();
+    edge.dx = Math.max(0, dx);
+    pageEl.style.transform = `translateX(${edge.dx}px)`;
+    pageEl.style.setProperty("--swipe", String(Math.min(1, edge.dx / innerWidth)));
+  }, { passive: false });
+  function edgeEnd() {
+    if (!edge) return;
+    const { dx, active, t0 } = edge;
+    edge = null;
+    if (!active) return;
+    const speed = dx / Math.max(1, Date.now() - t0); // px/ms
+    const leave = dx > innerWidth * 0.33 || (speed > 0.5 && dx > 40);
+    pageEl.classList.remove("swiping");
+    pageEl.classList.add("swipe-anim");
+    pageEl.style.transform = leave ? `translateX(${innerWidth}px)` : "translateX(0)";
+    setTimeout(() => {
+      pageEl.classList.remove("swipe-anim");
+      pageEl.style.transform = "";
+      pageEl.style.removeProperty("--swipe");
+      if (leave) { pageEl.classList.add("no-enter"); back(); setTimeout(() => pageEl.classList.remove("no-enter"), 50); }
+    }, 220);
+  }
+  pageEl.addEventListener("touchend", edgeEnd);
+  pageEl.addEventListener("touchcancel", edgeEnd);
 
   function renderPage(scrollTop) {
     const top = pageStack[pageStack.length - 1];
@@ -2168,7 +2213,7 @@
   // 캘린더를 옆으로 밀면 이전/다음 달
   let calSwipe = null;
   $("#pageBody").addEventListener("touchstart", (e) => {
-    if (!e.target.closest("#cal2") || e.touches.length !== 1) return;
+    if (!e.target.closest("#cal2") || e.touches.length !== 1 || e.touches[0].clientX <= 32) return;
     calSwipe = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   }, { passive: true });
   $("#pageBody").addEventListener("touchend", (e) => {

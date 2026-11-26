@@ -521,3 +521,8 @@ body.reordering { cursor: grabbing; }
 .topic-box { display: flex; gap: 8px; align-items: center; background: #f1f2f5; border-radius: 14px; padding: 8px 8px 8px 12px; }
 .topic-box code { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 700; overflow-wrap: anywhere; user-select: all; -webkit-user-select: all; }
 .topic-box .btn { padding: 9px 14px; flex: none; }
+
+/* 왼쪽 가장자리에서 밀어서 뒤로 */
+.page-sheet.swiping { animation: none; box-shadow: -10px 0 30px rgba(0,0,0,.18); }
+.page-sheet.swipe-anim { animation: none; transition: transform .22s cubic-bezier(.2,.7,.3,1); box-shadow: -10px 0 30px rgba(0,0,0,.18); }
+.page-sheet.no-enter { animation: none; }
