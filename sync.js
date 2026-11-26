@@ -246,6 +246,9 @@ export const ops = {
   remove: (roomId, coll, id) => fs.deleteDoc(fs.doc(db, "rooms", roomId, coll, id)),
   setProfile: (roomId, profile) => fs.updateDoc(roomRef(roomId), { profile }),
   setWidgets: (roomId, widgets) => fs.updateDoc(roomRef(roomId), { widgets }),
+  // 휴대폰 알림 받을 주소 (ntfy 주제 이름). 비우면 알림 끔
+  setNotify: (roomId, role, topic) =>
+    fs.updateDoc(roomRef(roomId), new fs.FieldPath("notify", role), topic || fs.deleteField()),
   setMood: (roomId, date, role, mood) =>
     fs.updateDoc(roomRef(roomId), new fs.FieldPath("moods", date, role), mood ?? fs.deleteField()),
 };

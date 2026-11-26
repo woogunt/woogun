@@ -206,7 +206,7 @@
   let artifactBackend = null; // claude.ai 링크(아티팩트)의 공유 저장소
   async function sync() {
     if (artifactBackend) return artifactBackend;
-    if (!syncMod) syncMod = await import("./sync.js?v=202611260124"); // 버전 표시로 예전 저장본 대신 새 파일
+    if (!syncMod) syncMod = await import("./sync.js?v=202611260833"); // 버전 표시로 예전 저장본 대신 새 파일
     await syncMod.init();
     return syncMod;
   }
@@ -315,7 +315,11 @@
   const store = {
     async add(coll, item) {
       item = { by: role(), at: Date.now(), ...item };
-      if (shared()) return remote((s) => s.ops.add(session.roomId, coll, item));
+      if (shared()) {
+        await remote((s) => s.ops.add(session.roomId, coll, item));
+        notifyPartner(coll, item);
+        return;
+      }
       state[coll] = state[coll].filter((x) => x.id !== item.id);
       state[coll].push(item); sortColl(coll); save(); render();
     },
@@ -364,6 +368,7 @@
       onRoom(room) {
         state.profile = room.profile;
         state.moods = room.moods || {};
+        state.notify = room.notify || {};
         if (validWidgets(room.widgets)) {
           state.widgets = validWidgets(room.widgets);
           if (!press || !press.dragging) { local.widgets = state.widgets; saveLocal(); }
@@ -997,6 +1002,42 @@
     if (!skipRender) render(); else renderHome();
   }
 
+  // ---- 휴대폰 알림: ntfy 앱으로 상대에게 (무료) ----
+  // 각자 비밀 주제 이름을 만들어 ntfy 앱에서 구독 → 내가 뭔가 올리면 상대 주제로 알림을 보냄
+  const NTFY = "https://ntfy.sh";
+  const NOTIFY_TEXT = {
+    diary: "일기를 썼어요 ✍️", comments: "일기에 댓글을 남겼어요 💬", photos: "사진을 올렸어요 📸",
+    events: "일정을 추가했어요 📅", records: "기록을 남겼어요 📜", expenses: "데이트 지출을 기록했어요 💰",
+    bucket: "버킷리스트를 추가했어요 ✅", places: "데이트 지도에 표시했어요 🗺️",
+  };
+  const notifyQueue = {};
+  let notifyTimer = null;
+  function notifyPartner(coll) {
+    if (!shared() || session.artifact || !NOTIFY_TEXT[coll]) return;
+    const topic = state.notify && state.notify[other()];
+    if (!topic) return;
+    notifyQueue[coll] = (notifyQueue[coll] || 0) + 1;
+    // 사진 여러 장처럼 한꺼번에 올리면 알림 하나로 묶기
+    clearTimeout(notifyTimer);
+    notifyTimer = setTimeout(() => {
+      const parts = Object.entries(notifyQueue).map(([c, n]) => (c === "photos" && n > 1 ? `사진 ${n}장을 올렸어요 📸` : NOTIFY_TEXT[c]));
+      for (const k in notifyQueue) delete notifyQueue[k];
+      sendNtfy(topic, `${nameOf(role())}님이 ${parts.join(", ")}`);
+    }, 2500);
+  }
+  function sendNtfy(topic, message, title) {
+    return fetch(NTFY, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ topic, title: title || appTitle(), message, tags: ["two_hearts"], click: location.origin + location.pathname }),
+    }).then((res) => res.ok).catch(() => false);
+  }
+  function randomTopic() {
+    const chars = "abcdefghijkmnpqrstuvwxyz23456789";
+    const buf = crypto.getRandomValues(new Uint32Array(18));
+    return "uridul-" + [...buf].map((n) => chars[n % chars.length]).join("");
+  }
+
   // =========================================================
   // 페이지 (전체 화면)
   // =========================================================
@@ -1369,6 +1410,25 @@
             <p class="muted small" style="margin:0">바꾼 사진은 ${esc(nameOf(other()))}님 폰에도 똑같이 적용돼요.<br />
               폰 홈 화면 아이콘은 추가할 때 정해져요. 바꾼 뒤에는 홈 화면의 앱을 <b>지우고 다시 "홈 화면에 추가"</b>해 주세요. (기록은 그대로예요)</p>
           </div>
+          ${shared() && !session.artifact ? (() => {
+            const mine = state.notify && state.notify[role()];
+            const theirs = state.notify && state.notify[other()];
+            return `<div class="card stack"><div class="w-title" style="margin:0"><span style="font-size:16px">🔔 휴대폰 알림 (무료)</span><span class="pill">${mine ? "켜짐" : "꺼짐"}</span></div>
+            ${mine ? `<p class="muted small" style="margin:0">${esc(nameOf(other()))}님이 일기·사진·일정·댓글 같은 걸 올리면 내 폰 잠금화면에 알림이 와요.</p>
+              <ol class="steps">
+                <li>폰에 <b>ntfy</b> 앱을 설치해요. (App Store / Play 스토어에서 <b>ntfy</b> 검색, 무료·가입 없음)</li>
+                <li>ntfy 앱에서 <b>＋</b>를 누르고, 아래 <b>내 알림 주소</b>를 붙여넣고 <b>Subscribe(구독)</b>를 눌러요.</li>
+                <li>알림 허용을 물으면 <b>허용</b>을 눌러요.</li>
+              </ol>
+              <div class="topic-box"><code id="myTopic">${esc(mine)}</code><button class="btn" data-action="notify-copy">복사</button></div>
+              <button class="btn" data-action="notify-test">테스트 알림 보내기</button>
+              <button class="link" data-action="notify-off">알림 끄기</button>`
+            : `<p class="muted small" style="margin:0">켜면 ${esc(nameOf(other()))}님이 뭔가 올릴 때 내 폰으로 알림이 와요. 무료 알림 앱 <b>ntfy</b>를 써요.</p>
+              <button class="btn primary" data-action="notify-on">알림 켜기</button>`}
+            <p class="muted small" style="margin:0">${theirs ? `✅ ${esc(nameOf(other()))}님도 알림을 켰어요. 내가 올리면 ${esc(nameOf(other()))}님 폰에 알림이 가요.` : `${esc(nameOf(other()))}님은 아직 알림을 안 켰어요. ${esc(nameOf(other()))}님 폰의 설정에서도 켜야 ${esc(nameOf(other()))}님에게 알림이 가요.`}</p>
+            <p class="muted small" style="margin:0">알림에는 "${esc(nameOf(other()))}님이 사진을 올렸어요"처럼 무엇을 올렸는지만 나오고, 일기 내용이나 사진은 보내지 않아요.</p>
+          </div>`;
+          })() : ""}
           <div class="card"><h3>나는 누구인가요?</h3>
             <p class="muted small" style="margin:-4px 0 10px">이 기기를 쓰는 사람을 골라주세요. 잘못 되어 있으면 여기서 바꿀 수 있어요.</p>
             <div class="seg" style="margin:0">${["p1", "p2"].map((r) =>
@@ -1781,6 +1841,34 @@
         saveSession(); render();
         ACTIONS["share-invite"]();
       } catch (err) { console.error(err); toast("초대를 만들지 못했어요. 인터넷 연결을 확인해주세요."); }
+    },
+    "notify-on": async () => {
+      const topic = randomTopic();
+      try {
+        const s = await sync();
+        await s.ops.setNotify(session.roomId, role(), topic);
+        state.notify = { ...(state.notify || {}), [role()]: topic };
+        render();
+        toast("알림 주소를 만들었어요. ntfy 앱에 등록해 주세요");
+      } catch (err) { console.error(err); toast("알림을 켜지 못했어요. 인터넷 연결을 확인해주세요."); }
+    },
+    "notify-off": async () => {
+      if (!(await ask("휴대폰 알림을 끌까요?\nntfy 앱에서도 구독을 지워주세요.", "끄기"))) return;
+      try {
+        const s = await sync();
+        await s.ops.setNotify(session.roomId, role(), "");
+        const n = { ...(state.notify || {}) }; delete n[role()]; state.notify = n;
+        render();
+      } catch (err) { console.error(err); toast("실패했어요. 인터넷 연결을 확인해주세요."); }
+    },
+    "notify-copy": () => {
+      const t = state.notify && state.notify[role()]; if (!t) return;
+      navigator.clipboard?.writeText(t).then(() => toast("알림 주소를 복사했어요. ntfy 앱에 붙여넣어 주세요"), () => toast(t));
+    },
+    "notify-test": async () => {
+      const t = state.notify && state.notify[role()]; if (!t) return;
+      const ok = await sendNtfy(t, "알림이 잘 와요! 💕 이제 상대가 뭔가 올리면 이렇게 알려드릴게요.", `${appTitle()} 테스트`);
+      toast(ok ? "테스트 알림을 보냈어요. 폰에 알림이 왔는지 확인해보세요" : "보내지 못했어요. 인터넷 연결을 확인해주세요.");
     },
     "icon-change": async () => {
       const [f] = await pickImages(); if (!f) return;
