@@ -135,7 +135,8 @@ export async function loadPrefs() {
   await init();
   if (!auth.currentUser) return null;
   try {
-    const s = await fs.getDoc(userRef());
+    // 서버에서 직접 읽음 (방금 저장한 roomId만 들어있는 임시 사본을 읽으면 설정이 없는 것처럼 보임)
+    const s = await fs.getDocFromServer(userRef()).catch(() => fs.getDoc(userRef()));
     return s.exists() ? s.data().prefs || null : null;
   } catch { return null; }
 }

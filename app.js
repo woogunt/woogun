@@ -99,40 +99,98 @@
     if (!writeJSON(KEY, data)) toast("저장 공간이 부족해요. 사진을 몇 장 지워주세요.");
   }
   const stripPhoto = ({ photo, ...rest }) => rest;
-  const saveLocal = () => { if (!writeJSON(LOCAL_KEY, local)) toast("배경 사진이 너무 커요."); schedulePrefsSync(); };
+  // ---- 배경 사진은 큰 저장 공간(IndexedDB)에 따로 (localStorage는 작아서 가득 차면 저장이 안 됨) ----
+  const IDB_NAME = "uridul", IDB_STORE = "kv";
+  function idb(mode, fn) {
+    return new Promise((resolve) => {
+      try {
+        const req = indexedDB.open(IDB_NAME, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(IDB_STORE);
+        req.onerror = () => resolve(undefined);
+        req.onsuccess = () => {
+          try {
+            const tx = req.result.transaction(IDB_STORE, mode);
+            const out = fn(tx.objectStore(IDB_STORE));
+            tx.oncomplete = () => resolve(out && "result" in out ? out.result : true);
+            tx.onerror = () => resolve(undefined);
+          } catch { resolve(undefined); }
+        };
+      } catch { resolve(undefined); }
+    });
+  }
+  const idbGet = (k) => idb("readonly", (st) => st.get(k));
+  const idbSet = (k, v) => idb("readwrite", (st) => (v == null ? st.delete(k) : st.put(v, k)));
+  let bgStored = local.bg || null;       // IndexedDB에 마지막으로 저장한 배경
+  let bgInIdb = false;                   // IndexedDB를 쓸 수 있는지
+  const bgLoaded = (async () => {
+    const v = await idbGet("bg");
+    if (v === undefined && !("indexedDB" in window)) return;
+    bgInIdb = true;
+    if (typeof v === "string" && v) { if (!local.bg) local.bg = v; bgStored = v; }
+    else if (local.bg) { await idbSet("bg", local.bg); bgStored = local.bg; } // 예전처럼 localStorage에 있던 배경을 옮김
+    writeLocalNow();
+  })().finally(() => { if (!prefsSnap) prefsSnap = snapOf(); });
+  function writeLocalNow() {
+    // 배경 사진은 IndexedDB에 있으면 localStorage에는 빼고 저장 (용량 절약)
+    const data = bgInIdb ? { ...local, bg: undefined } : local;
+    if (!writeJSON(LOCAL_KEY, data)) {
+      if (!bgInIdb) toast("배경 사진이 너무 커서 이 폰에 저장하지 못했어요. 다른 사진으로 해보세요.");
+    }
+    if (bgInIdb && (local.bg || null) !== bgStored) { bgStored = local.bg || null; idbSet("bg", bgStored); }
+  }
+  const saveLocal = () => { writeLocalNow(); schedulePrefsSync(); };
 
   // ---- 내 기기 설정을 내 구글 계정에 백업 (Firebase 공유 모드) ----
+  // 항목마다 "언제 바꿨는지"를 따로 기록해서, 바꾼 적 없는 기본값(예: 배경 없음)이 다른 폰의 설정을 덮어쓰지 않게
   const PREF_KEYS = ["bg", "bgLum", "glass", "calPhotos", "lastSeen", "myRole"];
-  const prefsOf = (o) => { const p = {}; for (const k of PREF_KEYS) if (o[k] !== undefined) p[k] = o[k]; return p; };
-  let prefsPushed = null, prefsTimer = null, prefsReady = false;
+  if (!local.prefTimes) local.prefTimes = {};
+  let prefsSnap = null, prefsTimer = null, prefsReady = false;
+  const snapOf = () => { const o = {}; for (const k of PREF_KEYS) o[k] = JSON.stringify(local[k] === undefined ? null : local[k]); return o; };
   function schedulePrefsSync() {
+    // 바뀐 항목에 "바꾼 시각"을 항상 기록 (로그인 확인 전에 바꿔도 나중에 덮어써지지 않게)
+    if (!prefsSnap) return;
+    const now = snapOf();
+    const changed = PREF_KEYS.filter((k) => now[k] !== prefsSnap[k]);
+    if (!changed.length) return;
+    const at = Date.now();
+    for (const k of changed) local.prefTimes[k] = at;
+    prefsSnap = now;
+    writeLocalNow();
     if (!prefsReady || !session || session.artifact || !syncMod || !syncMod.savePrefs) return;
-    const json = JSON.stringify(prefsOf(local));
-    if (json === prefsPushed) return;
     clearTimeout(prefsTimer);
-    prefsTimer = setTimeout(async () => {
-      try {
-        local.prefsAt = Date.now(); writeJSON(LOCAL_KEY, local);
-        await syncMod.savePrefs({ ...prefsOf(local), at: local.prefsAt });
-        prefsPushed = json;
-      } catch (e) { console.warn("prefs", e); }
-    }, 1500);
+    prefsTimer = setTimeout(pushPrefs, 1500);
   }
-  // 로그인 직후: 계정에 저장된 설정이 더 최신이면(예: 앱을 지웠다 다시 깐 경우) 그걸로 되돌림
+  async function pushPrefs() {
+    try {
+      const values = {}, times = {};
+      for (const k of PREF_KEYS) if (local.prefTimes[k]) { values[k] = local[k] === undefined ? null : local[k]; times[k] = local.prefTimes[k]; }
+      // 계정에 올리는 배경은 문서 크기 제한(1MB) 안으로 줄여서
+      if (typeof values.bg === "string" && values.bg.length > 700000) values.bg = await shrinkDataURL(values.bg, 700000);
+      await syncMod.savePrefs({ values, times });
+    } catch (e) { console.warn("prefs", e); }
+  }
+  // 로그인 직후: 계정 쪽에서 더 나중에 바꾼 항목만 가져옴
   async function restorePrefs(s) {
     if (!s.loadPrefs) return;
-    const remotePrefs = await s.loadPrefs();
-    if (remotePrefs && (remotePrefs.at || 0) > (local.prefsAt || 0)) {
-      for (const k of PREF_KEYS) if (remotePrefs[k] !== undefined) local[k] = remotePrefs[k];
-      local.prefsAt = remotePrefs.at;
-      writeJSON(LOCAL_KEY, local);
-      prefsPushed = JSON.stringify(prefsOf(local));
-      applyBg(); render();
-    } else {
-      prefsPushed = remotePrefs ? JSON.stringify(prefsOf(remotePrefs)) : null;
+    await bgLoaded;
+    const remote = await s.loadPrefs();
+    let changed = false;
+    if (remote && remote.times && remote.values) {
+      for (const k of PREF_KEYS) {
+        const t = remote.times[k] || 0;
+        if (t > (local.prefTimes[k] || 0) && k in remote.values) { local[k] = remote.values[k]; local.prefTimes[k] = t; changed = true; }
+      }
+    } else if (remote) {
+      // 예전 방식으로 저장된 설정: 이 폰에 없는 값만 채움 (있는 값은 절대 지우지 않음)
+      for (const k of PREF_KEYS) {
+        if (remote[k] != null && (local[k] == null)) { local[k] = remote[k]; changed = true; }
+      }
     }
-    prefsReady = true;
-    schedulePrefsSync(); // 이 기기 쪽이 더 최신이면 올림
+    prefsSnap = snapOf();
+    prefsReady = !!(session && !session.artifact);
+    if (changed) { writeLocalNow(); applyBg(); render(); }
+    // 이 폰에서 바꾼 적 있는 항목은 새 방식으로 올려둠
+    if (Object.keys(local.prefTimes).length) { clearTimeout(prefsTimer); prefsTimer = setTimeout(pushPrefs, 1500); }
   }
   const saveSession = () => {
     if (session && session.artifact) return; // claude.ai 링크 공유는 열 때마다 확인
@@ -206,7 +264,7 @@
   let artifactBackend = null; // claude.ai 링크(아티팩트)의 공유 저장소
   async function sync() {
     if (artifactBackend) return artifactBackend;
-    if (!syncMod) syncMod = await import("./sync.js?v=202611262146"); // 버전 표시로 예전 저장본 대신 새 파일
+    if (!syncMod) syncMod = await import("./sync.js?v=2026112706121"); // 버전 표시로 예전 저장본 대신 새 파일
     await syncMod.init();
     return syncMod;
   }
@@ -361,8 +419,8 @@
     let s;
     try { s = await sync(); } catch (e) { console.error(e); setBadge("오프라인", true); return; }
     if (!session.artifact && s.remember) {
-      s.remember(session.roomId, session.role);
-      restorePrefs(s).catch((e) => console.warn("restore prefs", e));
+      s.remember(session.roomId, session.role).catch(() => {})
+        .then(() => restorePrefs(s)).catch((e) => console.warn("restore prefs", e));
       refreshPush(s);
     }
     unsubscribe = s.subscribe(session.roomId, {
@@ -2720,5 +2778,6 @@
 
   if (window.claude && typeof window.claude.use === "function") startInArtifact();
   else boot();
+  bgLoaded.then(() => { applyBg(); if (state.profile) render(); });
   showDeployInfo();
 })();
