@@ -168,7 +168,8 @@ with tab_exp:
     for e in db["experiences"]:
         with st.expander(f"⭐ {e['title']}  {('· ' + e['tags']) if e.get('tags') else ''}"):
             for key, label in [("period", "기간"), ("role", "역할"), ("situation", "상황"),
-                               ("action", "행동"), ("result", "결과"), ("learned", "배운 점")]:
+                               ("action", "행동"), ("result", "결과"), ("learned", "배운 점"),
+                               ("notes", "주의")]:
                 if e.get(key):
                     st.markdown(f"**{label}** — {e[key]}")
             if st.button("삭제", key=f"del_exp_{e['id']}"):
