@@ -46,7 +46,7 @@
   const defaults = () => ({
     profile: null, // { p1, p2, start, dayOne }
     moods: {},     // { "YYYY-MM-DD": { p1, p2 } }
-    events: [],    // { id, date, title, owner: "p1"|"p2"|"both", time?, memo?, by, at }
+    events: [],    // { id, date, end?, title, owner: "p1"|"p2"|"both", time?, memo?, by, at }
     bucket: [],    // { id, title, done, by, at }
     diary: [],     // { id, date, title, body, photo, by, at }
     comments: [],  // { id, diaryId, body, by, at } — 일기 댓글
@@ -210,6 +210,20 @@
   function parse(s) { const [y, m, d] = String(s).split("-").map(Number); return new Date(y, (m || 1) - 1, d || 1); }
   function today() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
   function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+  // 여러 날 일정: date(시작) ~ end(끝, 없으면 하루)
+  const evEnd = (e) => (e.end && e.end > e.date ? e.end : e.date);
+  const evCovers = (e, k) => e.date <= k && k <= evEnd(e);
+  const evMulti = (e) => evEnd(e) !== e.date;
+  function evDays(e) {
+    const out = []; const end = evEnd(e);
+    for (let d = parse(e.date), i = 0; i < 366; i++, d = addDays(d, 1)) { const k = ymd(d); out.push(k); if (k >= end) break; }
+    return out;
+  }
+  const evRange = (e) => {
+    if (!evMulti(e)) return "";
+    const a = parse(e.date), b = parse(evEnd(e));
+    return `${a.getMonth() + 1}/${a.getDate()} ~ ${b.getMonth() + 1}/${b.getDate()}`;
+  };
   function diffDays(a, b) { return Math.round((parse(ymd(b)) - parse(ymd(a))) / DAY); }
   const WD = ["일", "월", "화", "수", "목", "금", "토"];
   const fmt = (d) => `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`;
@@ -264,7 +278,7 @@
   let artifactBackend = null; // claude.ai 링크(아티팩트)의 공유 저장소
   async function sync() {
     if (artifactBackend) return artifactBackend;
-    if (!syncMod) syncMod = await import("./sync.js?v=2026112723542"); // 버전 표시로 예전 저장본 대신 새 파일
+    if (!syncMod) syncMod = await import("./sync.js?v=2026112723563"); // 버전 표시로 예전 저장본 대신 새 파일
     await syncMod.init();
     return syncMod;
   }
@@ -799,7 +813,7 @@
         const first = new Date(y, m, 1).getDay();
         const days = new Date(y, m + 1, 0).getDate();
         const special = specialDays();
-        const ev = new Set(state.events.map((x) => x.date));
+        const ev = new Set(state.events.flatMap((x) => evDays(x)));
         let cells = WD.map((w, i) => `<span class="${i === 0 ? "sun" : i === 6 ? "sat" : ""}">${w}</span>`).join("");
         cells += "<span></span>".repeat(first);
         for (let d = 1; d <= days; d++) {
@@ -1262,8 +1276,18 @@
 
         // 날짜별로 묶기
         const evBy = {};
-        for (const e of state.events) if (who[ownerOf(e)]) (evBy[e.date] = evBy[e.date] || []).push(e);
-        for (const k in evBy) evBy[k].sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+        for (const e of state.events) if (who[ownerOf(e)]) for (const k of evDays(e)) (evBy[k] = evBy[k] || []).push(e);
+        // 여러 날 일정을 먼저(시작일 순) 놓아서 매일 같은 줄에 이어지게
+        const evSort = (a, b) => (evMulti(b) - evMulti(a)) || (evMulti(a) ? a.date.localeCompare(b.date) || evEnd(b).localeCompare(evEnd(a)) || a.id.localeCompare(b.id) : 0) || (a.time || "").localeCompare(b.time || "");
+        for (const k in evBy) evBy[k].sort(evSort);
+        const evChip = (e, k, d) => {
+          if (!evMulti(e)) return `<span class="ev ${ownerOf(e)}">${esc(e.title)}</span>`;
+          const first = k === e.date, last = k === evEnd(e);
+          const cls = ["ev", "span", ownerOf(e), first && "s-start", last && "s-end", !first && d.getDay() === 0 && "s-wk", !last && d.getDay() === 6 && "s-wkend"].filter(Boolean).join(" ");
+          // 제목은 첫날과 매주 일요일(줄이 바뀔 때)에만
+          const label = first || d.getDay() === 0 ? esc(e.title) : "&nbsp;";
+          return `<span class="${cls}">${label}</span>`;
+        };
         const phBy = photosByDate();
 
         let cells = "";
@@ -1278,14 +1302,14 @@
           if (ph) body += `<span class="c2-photo" ${bgStyle(ph.src)}>${evs.length ? `<i class="c2-dot ${ownerOf(evs[0])}"></i>` : ""}</span>`;
           else {
             const max = special.has(k) ? 1 : 2;
-            body += evs.slice(0, max).map((e) => `<span class="ev ${ownerOf(e)}">${esc(e.title)}</span>`).join("");
+            body += evs.slice(0, max).map((e) => evChip(e, k, d)).join("");
             if (evs.length > max) body += `<span class="ev more">+${evs.length - max}</span>`;
           }
           cells += `<button type="button" class="${cls}" data-action="cal-sel" data-v="${k}"><span class="c2-num">${d.getDate()}</span>${body}</button>`;
         }
 
         // 선택한 날
-        const selEvents = state.events.filter((e) => e.date === sel).sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+        const selEvents = state.events.filter((e) => evCovers(e, sel)).sort(evSort);
         const selPhotos = phBy[sel] || [];
         const selDiary = state.diary.filter((x) => x.date === sel);
         const ownerLabel = (o) => (o === "both" ? "우리" : nameOf(o));
@@ -1294,7 +1318,7 @@
           ...selEvents.map((e) => `<button class="day-item" data-action="event-edit" data-id="${esc(e.id)}">
               <span class="pill2 ${ownerOf(e)}">${esc(ownerLabel(ownerOf(e)))}</span>
               <span class="grow"><b>${esc(e.title)}</b>${e.memo ? `<span class="muted small"> · ${esc(e.memo)}</span>` : ""}</span>
-              ${e.time ? `<span class="muted small">${esc(e.time)}</span>` : ""}</button>`),
+              ${evMulti(e) ? `<span class="muted small">${esc(evRange(e))}</span>` : ""}${e.time ? `<span class="muted small">${esc(e.time)}</span>` : ""}</button>`),
           ...selDiary.map((x) => `<button class="day-item" data-action="open" data-page="diary"><span class="pill2 diary">일기</span><span class="grow">✍️ ${esc(x.title)}</span></button>`),
         ];
 
@@ -1303,7 +1327,7 @@
           const hits = state.events.filter((e) => (e.title + " " + (e.memo || "")).toLowerCase().includes(q)).sort((a, b) => b.date.localeCompare(a.date));
           return `<div class="card"><div class="w-title" style="margin-bottom:8px"><span style="font-size:16px">🔍 "${esc(ui.calSearch)}"</span><button class="link" data-action="cal-search-clear">닫기</button></div>
             ${hits.length ? hits.slice(0, 30).map((e) => `<button class="day-item" data-action="cal-goto" data-v="${esc(e.date)}">
-              <span class="pill2 ${ownerOf(e)}">${esc(ownerLabel(ownerOf(e)))}</span><span class="grow">${esc(e.title)}</span><span class="muted small">${fmt(parse(e.date))}</span></button>`).join("")
+              <span class="pill2 ${ownerOf(e)}">${esc(ownerLabel(ownerOf(e)))}</span><span class="grow">${esc(e.title)}</span><span class="muted small">${evMulti(e) ? esc(evRange(e)) : fmt(parse(e.date))}</span></button>`).join("")
               : `<div class="empty-hint">찾는 일정이 없어요</div>`}</div>`;
         })() : "";
 
@@ -1611,16 +1635,21 @@
       fields: [
         { name: "owner", label: "누구 일정인가요?", type: "seg", colored: true, value: ev ? ownerOf(ev) : "both", options: owners },
         { name: "title", label: "일정", value: ev?.title, required: true, max: 40, placeholder: "예) 롯데월드 데이트" },
-        { name: "date", label: "날짜", type: "date", value: ev ? ev.date : date, required: true },
+        { name: "date", label: "시작 날짜", type: "date", value: ev ? ev.date : date, required: true },
+        { name: "end", label: "끝나는 날짜 (여러 날 일정이면)", type: "date", value: ev && evMulti(ev) ? evEnd(ev) : "" },
         { name: "time", label: "시간 (선택)", type: "time", value: ev?.time || "" },
         { name: "memo", label: "메모 (선택)", value: ev?.memo, max: 60, placeholder: "예) 강남역 2번 출구" },
       ],
       async onSubmit(v) {
-        const data = { owner: v.owner || "both", title: v.title, date: v.date, time: v.time || "", memo: v.memo || "" };
+        let start = v.date, end = v.end || "";
+        if (end && end < start) [start, end] = [end, start];
+        if (end && (parse(end) - parse(start)) / 864e5 > 365) { toast("일정은 1년 안으로 정해주세요."); return false; }
+        if (end === start) end = "";
+        const data = { owner: v.owner || "both", title: v.title, date: start, end, time: v.time || "", memo: v.memo || "" };
         if (ev) await store.update("events", ev.id, data);
         else await store.add("events", { id: uid(), ...data });
-        ui.selDate = v.date;
-        const d = parse(v.date);
+        ui.selDate = start;
+        const d = parse(start);
         ui.calMonth = new Date(d.getFullYear(), d.getMonth(), 1);
         renderPage();
       },
@@ -1665,7 +1694,7 @@
       return { em: "💬", text: `${n}님이 ${d ? `"${d.title}"에 ` : ""}댓글을 남겼어요: ${x.body}` };
     });
     push(state.photos, (x) => ({ em: x.kind === "video" ? "🎬" : "📸", text: x.place ? `${n}님이 ${placeName(x.place)}에 사진을 넣었어요` : x.kind === "video" ? `${n}님이 영상을 올렸어요` : `${n}님이 사진을 올렸어요`, photo: x.src }));
-    push(state.events, (x) => ({ em: "📅", text: `${n}님이 일정을 추가했어요: ${fmtW(parse(x.date))} ${x.title}` }));
+    push(state.events, (x) => ({ em: "📅", text: `${n}님이 일정을 추가했어요: ${evMulti(x) ? evRange(x) : fmtW(parse(x.date))} ${x.title}` }));
     push(state.records, (x) => ({ em: "📜", text: `${n}님이 기록을 남겼어요: ${x.title}`, photo: x.photo }));
     push(state.expenses, (x) => ({ em: "💰", text: `${n}님이 지출을 기록했어요: ${x.title} ${won(x.amount)}` }));
     push(state.bucket, (x) => ({ em: "✅", text: `${n}님이 버킷리스트를 추가했어요: ${x.title}` }));

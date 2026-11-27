@@ -468,6 +468,12 @@ body.reordering { cursor: grabbing; }
 .ev.both { background: var(--own-both-bg); color: var(--own-both-fg); }
 .ev.anniv { background: #ffe8ef; color: #d6336c; }
 .ev.more { background: none; color: var(--muted); padding: 0 4px; }
+/* 여러 날 일정: 칸 사이를 이어서 한 줄 막대처럼 */
+.c2 .ev.span { border-radius: 0; margin: 0 -2px; padding-left: 6px; }
+.c2 .ev.span.s-start, .c2 .ev.span.s-wk { border-top-left-radius: 6px; border-bottom-left-radius: 6px; margin-left: 0; padding-left: 4px; }
+.c2 .ev.span.s-end, .c2 .ev.span.s-wkend { border-top-right-radius: 6px; border-bottom-right-radius: 6px; margin-right: 0; }
+.c2 .ev.span:not(.s-start):not(.s-wk) { color: transparent; }
+.c2 .ev.span.s-start, .c2 .ev.span.s-wk { overflow: visible; position: relative; z-index: 1; }
 .c2-photo { position: relative; display: block; width: 100%; aspect-ratio: 3 / 4; max-height: 64px; border-radius: 8px; background: center / cover no-repeat; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
 .c2-dot { position: absolute; right: 3px; top: 3px; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid #fff; }
 .c2-dot.p1 { background: var(--own-p1-fg); } .c2-dot.p2 { background: var(--own-p2-fg); } .c2-dot.both { background: #e0a100; }
