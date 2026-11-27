@@ -1,0 +1,466 @@
+<title>AI 직원 오피스</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
+<style>
+  /* Layout: 팀별 방 카드가 나란히(좁으면 세로로) 놓이고, 각 방 위에 매달린 표지판 */
+  :root {
+    --bg: #FBF6F1;
+    --fg: #3E3550;
+    --muted: #8A7F99;
+    --card: #FFFFFF;
+    --line: #EADFD6;
+    --accent: #FF8FA3;
+    --sign-wood: #E8B98A;
+    --sign-wood-dark: #C98F5E;
+    --font-display: "Jua", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    --font-body: "Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #26222F; --fg: #F3EDF7; --muted: #B3A9C2; --card: #312C3C; --line: #463F55;
+      --accent: #FF9DB0; --sign-wood: #D9A878; --sign-wood-dark: #A9774A; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #26222F; --fg: #F3EDF7; --muted: #B3A9C2; --card: #312C3C; --line: #463F55;
+    --accent: #FF9DB0; --sign-wood: #D9A878; --sign-wood-dark: #A9774A; color-scheme: dark;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .page {
+    max-width: 1500px;
+    margin: 0 auto;
+    padding-block: 28px 48px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; margin-bottom: 18px; }
+  h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(28px, 4vw, 40px); margin: 0; letter-spacing: 0.01em; text-wrap: balance; }
+  h1 span { color: var(--accent); }
+  .hint { color: var(--muted); margin: 0; font-size: 14px; }
+
+  .floor-plan { display: flex; flex-wrap: wrap; gap: 28px 24px; align-items: flex-start; }
+  .room { flex: var(--grow) 1 var(--basis); min-width: 0; display: flex; flex-direction: column; align-items: center; }
+
+  /* 매달린 표지판 */
+  .sign-wrap { position: relative; padding-top: 22px; margin-bottom: -6px; z-index: 2; }
+  .sign-wrap::before, .sign-wrap::after {
+    content: ""; position: absolute; top: 0; width: 2px; height: 26px; background: var(--sign-wood-dark);
+  }
+  .sign-wrap::before { left: 26%; transform: rotate(-8deg); }
+  .sign-wrap::after { right: 26%; transform: rotate(8deg); }
+  .sign {
+    position: relative;
+    font-family: var(--font-display);
+    font-size: 22px;
+    color: #4A3424;
+    background: var(--sign-wood);
+    border-radius: 16px;
+    padding: 6px 22px 8px;
+    box-shadow: 0 5px 0 var(--sign-wood-dark);
+    display: flex; align-items: center; gap: 10px;
+    white-space: nowrap;
+  }
+  .sign::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--dot); box-shadow: 0 0 0 3px rgba(255,255,255,.55); }
+  .sign small { font-family: var(--font-body); font-size: 13px; opacity: .75; }
+
+  .stage {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 26px;
+    padding: 10px;
+    overflow-x: auto;
+  }
+  .stage-inner { position: relative; min-width: 520px; }
+  .stage svg { display: block; width: 100%; height: auto; border-radius: 18px; }
+
+  /* 캐릭터 */
+  .person { cursor: pointer; outline: none; }
+  .person .breath { transform-box: fill-box; transform-origin: 50% 100%; animation: breathe 3.4s ease-in-out infinite; animation-delay: var(--d, 0s); }
+  .person .head { transform-box: fill-box; transform-origin: 50% 100%; animation: bob 3.4s ease-in-out infinite; animation-delay: var(--d, 0s); }
+  .person .eyes { transform-box: fill-box; transform-origin: 50% 50%; animation: blink 5s infinite; animation-delay: var(--d, 0s); }
+  .person:hover .ring, .person:focus-visible .ring { opacity: 1; }
+  .person .ring { opacity: 0; transition: opacity .2s; }
+  .person.active .ring { opacity: 1; }
+  @keyframes breathe { 0%,100% { transform: scale(1, 1); } 50% { transform: scale(1.025, 1.045); } }
+  @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-2.5px); } }
+  @keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+  .ticker-text { animation: tick 14s linear infinite; }
+  @keyframes tick { from { transform: translateX(0); } to { transform: translateX(-260px); } }
+
+  /* 말풍선 */
+  .bubble {
+    position: absolute;
+    width: 230px;
+    background: #FFFFFF;
+    color: #3E3550;
+    border: 2.5px solid #3E3550;
+    border-radius: 20px;
+    padding: 10px 14px 12px;
+    box-shadow: 0 6px 0 rgba(62,53,80,.15);
+    transform: translate(-50%, calc(-100% - 14px));
+    z-index: 5;
+    animation: pop .22s cubic-bezier(.3,1.6,.6,1);
+  }
+  .bubble::after {
+    content: ""; position: absolute; left: var(--tail, 50%); bottom: -11px; width: 18px; height: 18px;
+    background: #FFFFFF; border-right: 2.5px solid #3E3550; border-bottom: 2.5px solid #3E3550;
+    transform: translateX(-50%) rotate(45deg); border-bottom-right-radius: 5px;
+  }
+  .bubble b { font-family: var(--font-display); font-weight: 400; font-size: 18px; }
+  .bubble .role { display: inline-block; font-size: 12px; background: var(--chip); border-radius: 999px; padding: 1px 9px; margin-left: 6px; vertical-align: 2px; }
+  .bubble p { margin: 6px 0 0; font-size: 14px; line-height: 1.5; }
+  @keyframes pop { from { transform: translate(-50%, calc(-100% - 4px)) scale(.6); opacity: 0; } }
+
+  .roster { margin-top: 26px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .roster button {
+    font: inherit; font-size: 14px; color: var(--fg); background: var(--card); border: 1px solid var(--line);
+    border-radius: 999px; padding: 4px 14px 4px 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+  }
+  .roster button:hover { border-color: var(--accent); }
+  .roster button:focus-visible, .person:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .roster i { width: 20px; height: 20px; border-radius: 50%; background: var(--c); display: inline-block; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .person .breath, .person .head, .person .eyes, .ticker-text, .bubble { animation: none; }
+  }
+</style>
+
+<div class="page">
+  <header>
+    <h1>AI 직원 <span>오피스</span></h1>
+    <p class="hint">직원을 누르면 하는 일을 알려 줘요</p>
+  </header>
+  <main class="floor-plan" id="plan"></main>
+  <nav class="roster" id="roster" aria-label="직원 바로 찾기"></nav>
+</div>
+
+<script>
+const TEAMS = [
+  {
+    id: "trading", name: "트레이딩 팀", dot: "#5CC9A0",
+    wall: "#CDEFE2", wallTrim: "#B4E2D0", floor: "#F6E3C8", floorLine: "#EBD2B0",
+    width: 640,
+    members: [
+      { name: "호길", role: "주식 트레이더", shirt: "#7EB6F2", hair: "short", hairColor: "#3B2B24",
+        duty: "장이 열리면 주문을 넣고, 보유 종목의 손절·익절 라인을 지키며 포지션을 관리해요." },
+      { name: "대길", role: "주식 트레이더", shirt: "#FFB570", hair: "spiky", hairColor: "#2C2430",
+        duty: "분석 팀의 매수·매도 신호를 받아 실제 주문으로 옮기고, 체결 내역을 매일 정리해요." },
+    ],
+  },
+  {
+    id: "analysis", name: "주가 분석 팀", dot: "#B49CF2",
+    wall: "#E6DEFB", wallTrim: "#D6CAF5", floor: "#FBE0E4", floorLine: "#F1CBD1",
+    width: 920,
+    members: [
+      { name: "호성", role: "주가 전망 분석", shirt: "#9ED98B", hair: "part", hairColor: "#4A3328",
+        duty: "실적·금리·업황 자료를 모아 종목별 주가 전망 리포트를 만들어요." },
+      { name: "성호", role: "매수·매도 판단", shirt: "#F79AB8", hair: "curly", hairColor: "#33262A",
+        duty: "전망 리포트와 차트를 보고 지금 살지, 팔지, 기다릴지를 결정해요." },
+      { name: "미나", role: "매수·매도 추천", shirt: "#FFD86E", hair: "bob", hairColor: "#5A3A2C",
+        duty: "판단 결과를 쉬운 말로 정리해 추천 종목과 이유를 트레이딩 팀에 전달해요." },
+    ],
+  },
+];
+
+const H = 400, WALL = 222, FEET = 342;
+const SKIN = "#FFE0C7", SKIN_SHADE = "#F6C9A9", INK = "#3E3550";
+
+/* ---------- 배경: 벽 + 바닥 ---------- */
+function roomBase(t) {
+  let s = `<rect width="${t.width}" height="${H}" fill="${t.floor}"/>`;
+  for (let y = WALL + 26; y < H; y += 30) s += `<line x1="0" x2="${t.width}" y1="${y}" y2="${y}" stroke="${t.floorLine}" stroke-width="3" stroke-linecap="round"/>`;
+  s += `<rect width="${t.width}" height="${WALL}" fill="${t.wall}"/>`;
+  s += `<rect y="${WALL - 12}" width="${t.width}" height="12" fill="${t.wallTrim}"/>`;
+  return s;
+}
+
+function windowAt(x, y, w, h) {
+  return `<g>
+    <rect x="${x - 6}" y="${y - 6}" width="${w + 12}" height="${h + 12}" rx="18" fill="#FFFFFF"/>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="13" fill="#BFE3FA"/>
+    <ellipse cx="${x + w * .3}" cy="${y + h * .38}" rx="20" ry="9" fill="#FFFFFF"/>
+    <ellipse cx="${x + w * .42}" cy="${y + h * .32}" rx="14" ry="10" fill="#FFFFFF"/>
+    <ellipse cx="${x + w * .74}" cy="${y + h * .68}" rx="16" ry="7" fill="#FFFFFF" opacity=".85"/>
+    <rect x="${x + w / 2 - 3}" y="${y}" width="6" height="${h}" fill="#FFFFFF"/>
+    <rect x="${x - 10}" y="${y + h + 4}" width="${w + 20}" height="10" rx="5" fill="#FFFFFF"/>
+  </g>`;
+}
+
+function clock(x, y) {
+  return `<g><circle cx="${x}" cy="${y}" r="20" fill="#FFFFFF" stroke="${INK}" stroke-width="3"/>
+    <line x1="${x}" y1="${y}" x2="${x}" y2="${y - 12}" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>
+    <line x1="${x}" y1="${y}" x2="${x + 9}" y2="${y + 3}" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="${x}" cy="${y}" r="2.5" fill="${INK}"/></g>`;
+}
+
+/* 시세 전광판 (트레이딩 팀) */
+function tickerBoard(x, y, w) {
+  const items = "코스피 ▲ · 코스닥 ▼ · 반도체 ▲ · 2차전지 ▼ · 환율 ▲ · ";
+  return `<g>
+    <defs><clipPath id="tk"><rect x="${x + 10}" y="${y + 10}" width="${w - 20}" height="34" rx="8"/></clipPath></defs>
+    <rect x="${x}" y="${y}" width="${w}" height="54" rx="14" fill="#3A3448"/>
+    <rect x="${x + 10}" y="${y + 10}" width="${w - 20}" height="34" rx="8" fill="#2A2535"/>
+    <g clip-path="url(#tk)"><text class="ticker-text" x="${x + 16}" y="${y + 33}" font-family="Jua, sans-serif" font-size="17" fill="#9CF2C6">${items}${items}${items}</text></g>
+    <rect x="${x + w / 2 - 2}" y="${y - 18}" width="4" height="18" fill="#3A3448"/>
+  </g>`;
+}
+
+/* 캔들차트 화이트보드 (분석 팀) */
+function whiteboard(x, y, w, h) {
+  let s = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="14" fill="#FFFFFF" stroke="#C9BDE8" stroke-width="5"/>`;
+  const c = [[40, 60, 48, 66, 1], [54, 80, 50, 62, 0], [46, 58, 38, 60, 1], [36, 52, 30, 54, 1], [32, 44, 26, 48, 0], [40, 36, 24, 46, 1], [28, 34, 20, 38, 1]];
+  c.forEach((k, i) => {
+    const cx = x + 22 + i * ((w - 44) / (c.length - 1));
+    const [o, cl, hi, lo, up] = k;
+    const col = up ? "#F06C86" : "#6C9CF0";
+    s += `<line x1="${cx}" x2="${cx}" y1="${y + hi}" y2="${y + lo + 18}" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>`;
+    s += `<rect x="${cx - 6}" y="${y + Math.min(o, cl)}" width="12" height="${Math.abs(o - cl) + 10}" rx="3" fill="${col}"/>`;
+  });
+  s += `<rect x="${x + w * .2}" y="${y + h}" width="${w * .6}" height="8" rx="4" fill="#C9BDE8"/>`;
+  return s;
+}
+
+/* ---------- 가구 (앞면 + 윗면) ---------- */
+function bookshelf(cx, bottom) {
+  const w = 96, h = 136, x = cx - w / 2, y = bottom - h;
+  const books = ["#F79AB8", "#7EB6F2", "#FFD86E", "#9ED98B", "#B49CF2", "#FFB570"];
+  let s = `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12" fill="#D9A577"/>`;
+  s += `<rect x="${x - 4}" y="${y - 10}" width="${w + 8}" height="16" rx="8" fill="#EDC49C"/>`;
+  for (let r = 0; r < 3; r++) {
+    const sy = y + 12 + r * 40;
+    s += `<rect x="${x + 8}" y="${sy}" width="${w - 16}" height="32" rx="6" fill="#B98455"/>`;
+    let bx = x + 12;
+    for (let b = 0; b < 5; b++) {
+      const bw = 10 + ((b + r) % 3) * 2, bh = 22 + ((b * 7 + r * 3) % 8);
+      if (bx + bw > x + w - 12) break;
+      s += `<rect x="${bx}" y="${sy + 32 - bh}" width="${bw}" height="${bh}" rx="3" fill="${books[(b + r * 2) % books.length]}"/>`;
+      bx += bw + 3;
+    }
+  }
+  return s;
+}
+
+function plant(cx, bottom, scale = 1) {
+  const g = (dx, dy, rx, ry, rot, c) => `<ellipse cx="${cx + dx * scale}" cy="${bottom - dy * scale}" rx="${rx * scale}" ry="${ry * scale}" fill="${c}" transform="rotate(${rot} ${cx + dx * scale} ${bottom - dy * scale})"/>`;
+  let s = "";
+  s += g(-18, 74, 12, 30, -30, "#6FC08B") + g(18, 74, 12, 30, 30, "#6FC08B") + g(0, 86, 13, 34, 0, "#86D39E");
+  s += g(-28, 56, 10, 22, -55, "#86D39E") + g(28, 56, 10, 22, 55, "#86D39E");
+  const pw = 46 * scale, ph = 40 * scale;
+  s += `<path d="M ${cx - pw / 2} ${bottom - ph} L ${cx + pw / 2} ${bottom - ph} L ${cx + pw / 2 - 6 * scale} ${bottom - 4 * scale} Q ${cx + pw / 2 - 7 * scale} ${bottom} ${cx + pw / 2 - 12 * scale} ${bottom} L ${cx - pw / 2 + 12 * scale} ${bottom} Q ${cx - pw / 2 + 7 * scale} ${bottom} ${cx - pw / 2 + 6 * scale} ${bottom - 4 * scale} Z" fill="#F4A58A"/>`;
+  s += `<rect x="${cx - pw / 2 - 4 * scale}" y="${bottom - ph - 8 * scale}" width="${pw + 8 * scale}" height="${12 * scale}" rx="${6 * scale}" fill="#F8BFA9"/>`;
+  return s;
+}
+
+function monitor(cx, deskTop, kind, idx) {
+  const w = 76, h = 50, x = cx - w / 2, y = deskTop - h - 14;
+  let screen;
+  if (kind === "trading") {
+    const pts = idx % 2 ? "8,34 20,28 30,32 42,18 54,22 66,10" : "8,30 18,32 30,20 40,24 52,14 66,16";
+    screen = `<polyline points="${pts.split(" ").map(p => { const [a, b] = p.split(",").map(Number); return `${x + 5 + a},${y + 4 + b}`; }).join(" ")}" fill="none" stroke="#F06C86" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+  } else {
+    screen = [0, 1, 2].map(i => `<rect x="${x + 14 + i * 18}" y="${y + 38 - (12 + ((i + idx) % 3) * 8)}" width="11" height="${12 + ((i + idx) % 3) * 8}" rx="3" fill="${["#B49CF2", "#7EB6F2", "#9ED98B"][i]}"/>`).join("");
+  }
+  return `<g>
+    <rect x="${cx - 5}" y="${y + h}" width="10" height="14" fill="#9B92A8"/>
+    <rect x="${cx - 20}" y="${deskTop - 4}" width="40" height="8" rx="4" fill="#B9B0C6"/>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="9" fill="#4A4258"/>
+    <rect x="${x + 5}" y="${y + 5}" width="${w - 10}" height="${h - 10}" rx="6" fill="#F4FBFF"/>
+    ${screen}
+  </g>`;
+}
+
+function desk(cx, top, kind, idx) {
+  const w = 164;
+  return `<g>
+    <rect x="${cx - w / 2 + 14}" y="${top + 50}" width="12" height="22" rx="4" fill="#C08A5F"/>
+    <rect x="${cx + w / 2 - 26}" y="${top + 50}" width="12" height="22" rx="4" fill="#C08A5F"/>
+    <rect x="${cx - w / 2 + 4}" y="${top + 10}" width="${w - 8}" height="46" rx="10" fill="#D9A577"/>
+    <rect x="${cx + 18}" y="${top + 20}" width="48" height="26" rx="7" fill="#E7BB90"/>
+    <circle cx="${cx + 42}" cy="${top + 33}" r="3" fill="#B98455"/>
+    <rect x="${cx - w / 2}" y="${top}" width="${w}" height="16" rx="8" fill="#F0CCA6"/>
+    ${monitor(cx - 6, top + 4, kind, idx)}
+    <rect x="${cx + 40}" y="${top - 12}" width="14" height="14" rx="4" fill="#FFFFFF"/>
+    <path d="M ${cx + 54} ${top - 8} q 7 0 7 5 q 0 5 -7 5" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+  </g>`;
+}
+
+function meetingTable(cx, top) {
+  const rx = 74, ry = 18;
+  let s = "";
+  // 뒤쪽 의자
+  s += `<rect x="${cx - 52}" y="${top - 38}" width="34" height="40" rx="12" fill="#F7B6C6"/>`;
+  s += `<rect x="${cx + 18}" y="${top - 38}" width="34" height="40" rx="12" fill="#F7B6C6"/>`;
+  // 다리
+  s += `<rect x="${cx - 6}" y="${top + 24}" width="12" height="40" rx="4" fill="#C08A5F"/>`;
+  s += `<ellipse cx="${cx}" cy="${top + 66}" rx="30" ry="7" fill="#C08A5F"/>`;
+  // 앞면
+  s += `<path d="M ${cx - rx} ${top} L ${cx - rx} ${top + 12} A ${rx} ${ry} 0 0 0 ${cx + rx} ${top + 12} L ${cx + rx} ${top} Z" fill="#D9A577"/>`;
+  // 윗면
+  s += `<ellipse cx="${cx}" cy="${top}" rx="${rx}" ry="${ry}" fill="#F0CCA6"/>`;
+  s += `<rect x="${cx - 38}" y="${top - 8}" width="30" height="20" rx="4" fill="#FFFFFF" transform="rotate(-8 ${cx - 23} ${top + 2})"/>`;
+  s += `<line x1="${cx - 33}" x2="${cx - 15}" y1="${top}" y2="${top - 3}" stroke="#C9BDE8" stroke-width="2.5" stroke-linecap="round"/>`;
+  s += `<circle cx="${cx + 28}" cy="${top - 2}" r="8" fill="#FFFFFF"/><circle cx="${cx + 28}" cy="${top - 2}" r="5" fill="#C9A27E"/>`;
+  return s;
+}
+
+/* ---------- 캐릭터 ---------- */
+function hair(style, cx, cy, c) {
+  const R = 31;
+  const cap = `M ${cx - R - 1} ${cy + 2} Q ${cx - R - 3} ${cy - R - 6} ${cx} ${cy - R - 4} Q ${cx + R + 3} ${cy - R - 6} ${cx + R + 1} ${cy + 2} Q ${cx + R - 6} ${cy - 16} ${cx + 4} ${cy - 18} Q ${cx - R + 8} ${cy - 20} ${cx - R - 1} ${cy + 2} Z`;
+  switch (style) {
+    case "spiky":
+      return `<path d="${cap}" fill="${c}"/><path d="M ${cx - 12} ${cy - R - 1} L ${cx - 6} ${cy - R - 14} L ${cx} ${cy - R - 2} L ${cx + 7} ${cy - R - 13} L ${cx + 12} ${cy - R}" fill="${c}"/>`;
+    case "part":
+      return `<path d="M ${cx - R - 1} ${cy + 4} Q ${cx - R - 3} ${cy - R - 6} ${cx + 2} ${cy - R - 4} Q ${cx + R + 4} ${cy - R - 4} ${cx + R + 1} ${cy + 4} Q ${cx + R - 4} ${cy - 10} ${cx + 12} ${cy - 14} Q ${cx - 6} ${cy - 12} ${cx - 14} ${cy - 24} Q ${cx - 20} ${cy - 8} ${cx - R - 1} ${cy + 4} Z" fill="${c}"/>`;
+    case "curly":
+      return [[-24, -14], [-14, -26], [0, -31], [14, -26], [24, -14], [-29, -2], [29, -2], [-6, -20], [8, -20]]
+        .map(([dx, dy]) => `<circle cx="${cx + dx}" cy="${cy + dy}" r="11" fill="${c}"/>`).join("");
+    case "bob":
+      return `<path d="M ${cx - R - 3} ${cy + 22} Q ${cx - R - 6} ${cy - R - 8} ${cx} ${cy - R - 5} Q ${cx + R + 6} ${cy - R - 8} ${cx + R + 3} ${cy + 22} Q ${cx + R - 4} ${cy + 24} ${cx + R - 6} ${cy + 14} Q ${cx + R - 8} ${cy - 10} ${cx + 10} ${cy - 16} Q ${cx - 4} ${cy - 6} ${cx - 22} ${cy - 10} Q ${cx - R + 4} ${cy} ${cx - R + 6} ${cy + 14} Q ${cx - R + 4} ${cy + 24} ${cx - R - 3} ${cy + 22} Z" fill="${c}"/>
+        <circle cx="${cx + 20}" cy="${cy - 20}" r="5" fill="#FF8FA3"/>`;
+    default:
+      return `<path d="${cap}" fill="${c}"/>`;
+  }
+}
+
+function person(m, cx, i) {
+  const feet = FEET;
+  const bodyTop = feet - 44, headCy = bodyTop - 26, R = 31;
+  return `<g class="person" tabindex="0" role="button" aria-label="${m.name}, ${m.role}. 하는 일 보기" data-name="${m.name}" style="--d:${(i * 0.7).toFixed(1)}s">
+    <ellipse class="ring" cx="${cx}" cy="${feet + 2}" rx="40" ry="10" fill="none" stroke="#FF8FA3" stroke-width="3" stroke-dasharray="6 5"/>
+    <ellipse cx="${cx}" cy="${feet + 2}" rx="30" ry="7" fill="rgba(62,53,80,.14)"/>
+    <g class="breath">
+      <rect x="${cx - 15}" y="${feet - 14}" width="12" height="16" rx="6" fill="#5B5270"/>
+      <rect x="${cx + 3}" y="${feet - 14}" width="12" height="16" rx="6" fill="#5B5270"/>
+      <ellipse cx="${cx - 25}" cy="${bodyTop + 18}" rx="7" ry="12" fill="${m.shirt}"/>
+      <ellipse cx="${cx + 25}" cy="${bodyTop + 18}" rx="7" ry="12" fill="${m.shirt}"/>
+      <circle cx="${cx - 25}" cy="${bodyTop + 30}" r="5.5" fill="${SKIN}"/>
+      <circle cx="${cx + 25}" cy="${bodyTop + 30}" r="5.5" fill="${SKIN}"/>
+      <rect x="${cx - 23}" y="${bodyTop}" width="46" height="36" rx="18" fill="${m.shirt}"/>
+      <rect x="${cx - 9}" y="${bodyTop + 10}" width="18" height="12" rx="4" fill="#FFFFFF" opacity=".9"/>
+      <rect x="${cx - 6}" y="${bodyTop + 13}" width="12" height="2.5" rx="1" fill="${m.shirt}"/>
+      <g class="head">
+        <circle cx="${cx - R + 1}" cy="${headCy + 4}" r="7" fill="${SKIN_SHADE}"/>
+        <circle cx="${cx + R - 1}" cy="${headCy + 4}" r="7" fill="${SKIN_SHADE}"/>
+        <circle cx="${cx}" cy="${headCy}" r="${R}" fill="${SKIN}"/>
+        ${hair(m.hair, cx, headCy, m.hairColor)}
+        <g class="eyes">
+          <ellipse cx="${cx - 11}" cy="${headCy + 4}" rx="3.8" ry="5" fill="${INK}"/>
+          <ellipse cx="${cx + 11}" cy="${headCy + 4}" rx="3.8" ry="5" fill="${INK}"/>
+          <circle cx="${cx - 10}" cy="${headCy + 2}" r="1.4" fill="#FFFFFF"/>
+          <circle cx="${cx + 12}" cy="${headCy + 2}" r="1.4" fill="#FFFFFF"/>
+        </g>
+        <ellipse cx="${cx - 19}" cy="${headCy + 13}" rx="6" ry="3.5" fill="#FFA9B8" opacity=".75"/>
+        <ellipse cx="${cx + 19}" cy="${headCy + 13}" rx="6" ry="3.5" fill="#FFA9B8" opacity=".75"/>
+        <path d="M ${cx - 6} ${headCy + 14} Q ${cx} ${headCy + 20} ${cx + 6} ${headCy + 14}" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/>
+      </g>
+    </g>
+    <g>
+      <rect x="${cx - 34}" y="${feet + 16}" width="68" height="26" rx="13" fill="#FFFFFF" stroke="${INK}" stroke-width="2.5"/>
+      <text x="${cx}" y="${feet + 35}" text-anchor="middle" font-family="Jua, sans-serif" font-size="16" fill="${INK}">${m.name}</text>
+    </g>
+  </g>`;
+}
+
+/* ---------- 방 조립 ---------- */
+function buildRoom(t) {
+  const deskTop = WALL + 34;
+  let back = "", mid = "", front = "", people = "";
+  const W = t.width;
+  if (t.id === "trading") {
+    back += windowAt(150, 46, 130, 100) + tickerBoard(350, 58, 220) + clock(W - 40, 40);
+    back += bookshelf(66, WALL + 22);
+    const xs = [250, 460];
+    t.members.forEach((m, i) => { mid += desk(xs[i], deskTop, t.id, i); people += person(m, xs[i], i); });
+    front += plant(W - 44, H - 34, 0.9);
+  } else {
+    back += whiteboard(330, 40, 180, 110) + windowAt(640, 46, 120, 100) + clock(240, 60);
+    back += bookshelf(66, WALL + 22);
+    back += meetingTable(830, WALL + 38);
+    back += plant(W - 28, WALL + 6, 0.7);
+    const xs = [220, 420, 620];
+    t.members.forEach((m, i) => { mid += desk(xs[i], deskTop, t.id, i); people += person(m, xs[i], i + 2); });
+    front += plant(46, H - 30, 0.85);
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${t.name} 사무실">${roomBase(t)}${back}${mid}${front}${people}</svg>`;
+}
+
+const plan = document.getElementById("plan");
+const roster = document.getElementById("roster");
+const lookup = {};
+
+TEAMS.forEach(t => {
+  const room = document.createElement("section");
+  room.className = "room";
+  room.style.setProperty("--grow", String(t.width / 100));
+  room.style.setProperty("--basis", Math.round(t.width * 0.42) + "px");
+  room.innerHTML = `<div class="sign-wrap"><div class="sign" style="--dot:${t.dot}">${t.name} <small>${t.members.length}명</small></div></div>
+    <div class="stage"><div class="stage-inner">${buildRoom(t)}</div></div>`;
+  plan.appendChild(room);
+  t.members.forEach(m => {
+    lookup[m.name] = { m, t };
+    const b = document.createElement("button");
+    b.type = "button";
+    b.style.setProperty("--c", m.shirt);
+    b.innerHTML = `<i></i>${m.name} · ${t.name}`;
+    b.addEventListener("click", () => {
+      const el = document.querySelector(`.person[data-name="${m.name}"]`);
+      el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      setTimeout(() => show(el), 250);
+    });
+    roster.appendChild(b);
+  });
+});
+
+let bubble = null, activeEl = null;
+function hide() {
+  if (bubble) bubble.remove();
+  if (activeEl) activeEl.classList.remove("active");
+  bubble = activeEl = null;
+}
+function show(el) {
+  if (activeEl === el) { hide(); return; }
+  hide();
+  const { m, t } = lookup[el.dataset.name];
+  const inner = el.closest(".stage-inner");
+  const head = el.querySelector(".head").getBoundingClientRect();
+  const box = inner.getBoundingClientRect();
+  const cx = head.left + head.width / 2 - box.left;
+  const top = head.top - box.top;
+  const half = 115, minX = half + 4, maxX = box.width - half - 4;
+  const x = Math.max(minX, Math.min(maxX, cx));
+  bubble = document.createElement("div");
+  bubble.className = "bubble";
+  bubble.setAttribute("role", "status");
+  bubble.style.left = x + "px";
+  bubble.style.top = top + "px";
+  bubble.style.setProperty("--tail", (half + (cx - x)) + "px");
+  bubble.style.setProperty("--chip", t.wall);
+  bubble.innerHTML = `<b>${m.name}</b><span class="role">${m.role}</span><p>${m.duty}</p>`;
+  inner.appendChild(bubble);
+  activeEl = el;
+  el.classList.add("active");
+}
+
+document.addEventListener("click", e => {
+  const p = e.target.closest(".person");
+  if (p) { show(p); return; }
+  if (!e.target.closest(".bubble") && !e.target.closest(".roster")) hide();
+});
+document.addEventListener("keydown", e => {
+  const p = e.target.closest && e.target.closest(".person");
+  if (p && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); show(p); }
+  if (e.key === "Escape") hide();
+});
+window.addEventListener("resize", hide);
+</script>
