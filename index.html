@@ -2366,6 +2366,7 @@ dialog.sheet::backdrop { background: rgba(10, 20, 16, 0.45); }
   function addInbox(text, src, when) {
     const date = when ? (() => { const d = new Date(when); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; })() : todayStr();
     const items = parseQuick(text, date); state.inbox = state.inbox || [];
+    if (!items.length && src === 'issue') return 0; // 금액이 없는 알림(광고·안내 등)은 버림
     if (!items.length) { state.inbox.push({ id: newId(), raw: text, type: 'spend', group: 'live', cat: '기타', amount: 0, date, memo: text.slice(0, 30), src }); return 1; }
     items.forEach(it => state.inbox.push(Object.assign({ id: newId(), raw: text, src }, it))); return items.length;
   }
