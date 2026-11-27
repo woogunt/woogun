@@ -525,7 +525,7 @@ dialog.sheet::backdrop { background: rgba(10, 20, 16, 0.45); }
   <div id="pg-more" class="page" hidden>
     <div class="menu">
       <button class="menu-i" id="m-recur" type="button"><b>고정지출·정기결제</b><span id="m-recur-sub">매달 나가는 돈을 등록하면 결제일에 자동으로 기록돼요</span></button>
-      <button class="menu-i" id="m-auto" type="button"><b>결제 알림 자동 기록</b><span>카드 승인 문자·Apple Pay 결제를 단축어로 받아와요</span></button>
+      <button class="menu-i" id="m-auto" type="button"><b>결제 알림 자동 기록</b><span>토스·카드 앱 알림, 승인 문자, Apple Pay 결제를 단축어로 받아와요</span></button>
       <button class="menu-i" id="m-inbox" type="button"><b>확인 대기</b><span id="m-inbox-sub">자동으로 들어온 기록을 확인해요</span></button>
       <button class="menu-i" id="m-settings" type="button"><b>설정</b><span>앱 아이콘 · 기기 연동</span></button>
     </div>
@@ -2190,14 +2190,16 @@ dialog.sheet::backdrop { background: rgba(10, 20, 16, 0.45); }
     const cancel = /취소/.test(text), income = /입금/.test(text) && !/승인|결제/.test(text);
     let rest = text.replace(/\[[^\]]*\]/g, ' ').replace(/(\d{1,3}(?:,\d{3})+|\d+)\s*원/g, ' ').replace(/\d{1,2}[\/.]\d{1,2}/g, ' ').replace(/\d{1,2}:\d{2}/g, ' ')
       .replace(/누적\S*|잔액\S*|일시불|할부\S*|승인|결제|사용|체크|신용|취소|입금|출금|해외|국내|카드|Web발신|\S*\*\S*/g, ' ');
+    rest = rest.replace(/(\S+?)(에서|에게|으로|로)(?=\s|$)/g, '$1').replace(/토스|토스뱅크|KB국민|국민|신한|삼성|현대|롯데|하나|우리|NH농협|농협|BC|카카오뱅크|카카오페이|네이버페이|페이|완료|되었습니다|됐어요|했어요|알림|[|·:]/g, ' ');
     const toks = rest.split(/[\s\n]+/).map(s => s.trim()).filter(s => s.length >= 2 && !/^\d+$/.test(s));
-    const merchant = toks.length ? toks[toks.length - 1] : '결제';
-    if (income || cancel) return { type: 'income', cat: cancel ? '기타 수입' : '부수입', amount, date, memo: (cancel ? '결제 취소 ' : '') + merchant };
+    let merchant = toks.length ? toks[toks.length - 1] : '결제';
+    if (toks.length > 1 && /(점|지점|매장|센터)$/.test(merchant)) merchant = toks[toks.length - 2] + ' ' + merchant; // 예: GS25 강남점
+    if (income || cancel) return { type: 'income', cat: cancel ? '기타 수입' : /급여|월급|상여/.test(text) ? '월급' : '부수입', amount, date, memo: (cancel ? '결제 취소 ' : '') + merchant };
     const g = catGuess(merchant + ' ' + text); return { type: 'spend', group: g.group, cat: g.cat, amount, date, memo: merchant };
   }
   function parseQuick(text, date) {
     const t = (text || '').trim(); if (!t) return [];
-    if (/승인|\[Web발신\]|일시불|결제\s*완료|님.*원/.test(t) && /원/.test(t)) { const r = parseSms(t, date); return r ? [r] : []; }
+    if (/승인|\[Web발신\]|일시불|결제|사용|출금|입금|님.*원/.test(t) && /\d\s*원/.test(t) && !/^\S+\s*\d[\d,]*\s*(원|만)?(\s+\S+\s*\d[\d,]*\s*(원|만)?)*$/.test(t)) { const r = parseSms(t, date); return r ? [r] : []; }
     const out = [], re = /([^\d\n,]+?)\s*(\d[\d,]*(?:\.\d+)?)\s*(만\s*원|만|천\s*원|천|원)?(?=[\s,\n]|$)/g; let m;
     while ((m = re.exec(t))) {
       const label = m[1].replace(/[·:=\-]+$/, '').trim(), unit = (m[3] || '').replace(/\s/g, '');
@@ -2346,17 +2348,17 @@ dialog.sheet::backdrop { background: rgba(10, 20, 16, 0.45); }
     const cfg = ghCfg(), repo = cfg && cfg.repo ? cfg.repo : '아이디/salary-data', url = `https://api.github.com/repos/${repo}/issues`;
     const copyBtn = (v) => `<button class="chip cp" type="button" data-copy="${v.replace(/"/g, '&quot;')}">복사</button>`;
     $('auto-body').innerHTML = `
-      <p class="set-note">아이폰은 다른 앱의 <b>푸시 알림을 읽을 수 없어요</b>(애플 정책이라 어떤 가계부 앱도 마찬가지예요). 대신 <b>카드 승인 문자</b>와 <b>Apple Pay 결제</b>는 ‘단축어’ 자동화로 받아올 수 있어요. 카드사 앱에서 결제 알림을 <b>문자(SMS)로 받기</b>로 바꿔 두면 돼요.</p>
+      <p class="set-note">아이폰 <b>단축어 앱의 ‘앱 알림’ 자동화</b>로 토스·카드사·은행 앱의 <b>푸시 알림 내용</b>을 받아올 수 있어요. 카드 승인 <b>문자</b>와 <b>Apple Pay</b> 결제도 같은 방법으로 돼요. 자동화 목록에 ‘앱 알림’이 없으면 iOS를 최신으로 업데이트하세요.</p>
       <div class="auto-st ${cfg && cfg.linked ? 'ok' : ''}">${cfg && cfg.linked ? `기기 연동 켜짐 · ${repo}${state.ghIssueErr === 403 || state.ghIssueErr === 404 ? ' · <b>토큰에 Issues 권한이 없어요 (아래 0번)</b>' : ''}` : '먼저 ⚙ 설정 → 기기 연동을 켜 주세요. 받아온 알림을 이 저장소에 잠깐 담아 둬요.'}</div>
       <ol class="auto-steps">
         <li><b>토큰 권한 추가</b> — GitHub → Settings → Developer settings → Fine-grained tokens → 쓰던 토큰 → Permissions에 <b>Issues: Read and write</b> 추가 → 저장. 단축어에 넣을 토큰도 이것을 써요.</li>
-        <li><b>단축어 앱 → 자동화 → ＋ → 메시지</b> → ‘메시지에 다음 포함’에 <code>승인</code> (발신자를 카드사 번호로 정하면 더 정확) → <b>즉시 실행</b> → 다음</li>
+        <li><b>단축어 앱 → 자동화 → ＋ → 앱 알림</b> → 앱에 <b>토스</b>, 쓰는 <b>카드사·은행 앱</b>을 고르기 → 조건: 제목·메시지에 <code>결제</code> 포함 (앱에 따라 <code>승인</code>·<code>사용</code>·<code>출금</code>) → <b>즉시 실행</b> → 다음<br><small>문자로 받는다면: 자동화 → ＋ → <b>메시지</b> → ‘메시지에 다음 포함’ <code>승인</code></small></li>
         <li>‘새로운 빈 동작’ → <b>URL</b> 동작에 아래 주소 ${copyBtn(url)}<br><code class="code">${url}</code></li>
-        <li><b>URL의 콘텐츠 가져오기</b> 동작 추가 → 방법 <b>POST</b><br>헤더 <code>Authorization</code> = <code>Bearer 토큰</code>, <code>Accept</code> = <code>application/vnd.github+json</code><br>요청 본문 <b>JSON</b>: <code>title</code> = <code>결제</code>, <code>body</code> = (변수) <b>단축어 입력</b> 또는 <b>메시지</b></li>
+        <li><b>URL의 콘텐츠 가져오기</b> 동작 추가 → 방법 <b>POST</b><br>헤더 <code>Authorization</code> = <code>Bearer 토큰</code>, <code>Accept</code> = <code>application/vnd.github+json</code><br>요청 본문 <b>JSON</b>: <code>title</code> = <code>결제</code>, <code>body</code> = (변수) 앱 알림이면 <b>제목</b>·<b>부제</b>·<b>메시지</b>를 한 줄씩, 문자면 <b>메시지</b> (변수를 못 고르면 <b>단축어 입력</b>)</li>
         <li>완료. 승인 문자가 오면 저장소에 쌓였다가, <b>앱을 열면 ‘확인 대기’로 들어와요</b>. 항목을 보고 저장만 누르면 돼요.</li>
         <li><b>Apple Pay</b>(현대카드 등)도 같은 방법: 자동화 → <b>지갑</b> → 결제(거래) 선택 → 같은 동작, body에 <b>가맹점</b>과 <b>금액</b> 변수를 넣으세요.</li>
       </ol>
-      <section class="sim-sec"><span class="label">문자로 테스트해 보기</span><textarea class="field qa-text" id="auto-test" rows="3" placeholder="[Web발신] 현대카드 승인 홍*동 12,000원 일시불 11/27 14:20 스타벅스"></textarea><div class="note" id="auto-res"></div><div class="actions"><button class="btn ghost" type="button" id="auto-add">확인 대기에 넣기</button></div></section>`;
+      <section class="sim-sec"><span class="label">문자로 테스트해 보기</span><textarea class="field qa-text" id="auto-test" rows="3" placeholder="토스 알림 예: 스타벅스에서 4,500원 결제했어요&#10;문자 예: [Web발신] 현대카드 승인 홍*동 12,000원 일시불 11/27 14:20 스타벅스"></textarea><div class="note" id="auto-res"></div><div class="actions"><button class="btn ghost" type="button" id="auto-add">확인 대기에 넣기</button></div></section>`;
     $('auto-body').querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => { try { navigator.clipboard.writeText(b.dataset.copy).then(() => flash('복사했어요'), () => flash('길게 눌러 복사하세요')); } catch (e) { flash('길게 눌러 복사하세요'); } }));
     $('auto-test').addEventListener('input', e => { const r = parseQuick(e.target.value, todayStr()); $('auto-res').textContent = r.length ? r.map(x => `${x.type === 'income' ? '수입' : x.type === 'save' ? '저축' : '지출'} · ${x.memo || x.cat} · ${fmt(x.amount)}원 · ${x.cat || ''}`).join(' / ') : ''; });
     $('auto-add').addEventListener('click', () => { const t = $('auto-test').value.trim(); if (!t) return; addInbox(t, 'paste'); save(); appRender(); closeSheet('sheetAuto'); openInbox(); });
