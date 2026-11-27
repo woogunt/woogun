@@ -1,0 +1,645 @@
+<title>내 말투 자소서</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: 작업지시서(slip) 메타포. 상단 탭 + 한 열 작업 영역, 문항마다 STAR 칸이 채워지는 지시서 카드 */
+:root {
+  --bg: #f3f4f2;
+  --paper: #ffffff;
+  --ink: #1d2320;
+  --muted: #5f6a64;
+  --line: #d6dbd7;
+  --accent: #e0a800;        /* 지게차 안전 노랑 */
+  --accent-ink: #1d2320;
+  --ok: #2f7d4f;
+  --warn: #b8560b;
+  --warn-bg: #fff3e4;
+  --ok-bg: #e9f5ee;
+  --field: #f8f9f8;
+  --f-display: "IBM Plex Sans KR", "Noto Sans KR", system-ui, sans-serif;
+  --f-body: "Noto Sans KR", system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #151917; --paper: #1d2220; --ink: #e8ece9; --muted: #9aa59f; --line: #333b37;
+  --accent: #f2c230; --accent-ink: #151917; --ok: #6cc592; --warn: #f0a25a;
+  --warn-bg: #33261a; --ok-bg: #19291f; --field: #232926; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #151917; --paper: #1d2220; --ink: #e8ece9; --muted: #9aa59f; --line: #333b37;
+  --accent: #f2c230; --accent-ink: #151917; --ok: #6cc592; --warn: #f0a25a;
+  --warn-bg: #33261a; --ok-bg: #19291f; --field: #232926; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font: 15px/1.65 var(--f-body); margin: 0 }
+.wrap { max-width: 860px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 64px }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg) }
+header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line) }
+header .wrap { padding-block: 0 }
+.head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 14px 0 }
+h1 { font: 700 19px/1.2 var(--f-display); margin: 0; letter-spacing: -0.01em }
+h1 span { background: var(--accent); color: var(--accent-ink); padding: 1px 6px; margin-right: 6px; font-size: 13px; vertical-align: 2px }
+.status { font-size: 12px; color: var(--muted); text-align: right }
+nav { display: flex; gap: 4px; overflow-x: auto; padding-block: 10px 0 }
+nav a { font: 600 14px var(--f-display); color: var(--muted); text-decoration: none; padding: 8px 12px; border-bottom: 3px solid transparent; white-space: nowrap }
+nav a[aria-current="page"] { color: var(--ink); border-color: var(--accent) }
+h2 { font: 700 18px/1.3 var(--f-display); margin: 28px 0 10px; text-wrap: balance }
+h3 { font: 600 15px/1.4 var(--f-display); margin: 0; text-wrap: balance }
+p.lead { color: var(--muted); margin: 0 0 14px }
+.stack { display: flex; flex-direction: column; gap: 12px }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px }
+@media (max-width: 560px) { .grid2 { grid-template-columns: 1fr } }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 500; color: var(--muted); min-width: 0 }
+input[type=text], input[type=number], textarea { font: 15px/1.6 var(--f-body); color: var(--ink); background: var(--field); border: 1px solid var(--line); border-radius: 6px; padding: 9px 11px; width: 100% }
+textarea { resize: vertical; min-height: 84px }
+input:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+button { font: 600 14px var(--f-display); border-radius: 6px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); padding: 9px 14px; cursor: pointer }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent) }
+button.ghost { background: transparent }
+button.small { padding: 5px 10px; font-size: 13px }
+button:disabled { opacity: .5; cursor: not-allowed }
+.slip { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0 }
+.slip-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap }
+.tag { font: 500 12px var(--f-mono); color: var(--muted); letter-spacing: .04em }
+.count { font: 500 13px var(--f-mono); font-variant-numeric: tabular-nums; color: var(--muted) }
+.count.over { color: var(--warn); font-weight: 700 }
+.star { display: grid; grid-template-columns: 34px 1fr; gap: 8px 10px; align-items: start }
+.star .k { font: 700 14px var(--f-mono); width: 30px; height: 30px; display: grid; place-items: center; border-radius: 4px; background: var(--ok-bg); color: var(--ok) }
+.star .k.empty { background: var(--warn-bg); color: var(--warn) }
+.star .v { min-width: 0; font-size: 14px }
+.star .v small { display: block; color: var(--muted); font-size: 12px }
+.star .v.empty { color: var(--warn) }
+.ask { background: var(--warn-bg); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px }
+.ask h3 { color: var(--warn) }
+.answer { white-space: pre-wrap; font-size: 15px; line-height: 1.8; overflow-wrap: anywhere }
+.note { font-size: 13px; color: var(--muted) }
+.err { color: var(--warn); font-size: 14px }
+.pill { font: 600 12px var(--f-display); padding: 2px 8px; border-radius: 999px; background: var(--field); border: 1px solid var(--line); color: var(--muted) }
+.pill.ok { background: var(--ok-bg); color: var(--ok); border-color: transparent }
+.pill.warn { background: var(--warn-bg); color: var(--warn); border-color: transparent }
+details > summary { cursor: pointer; font: 600 14px var(--f-display); list-style: none }
+details > summary::-webkit-details-marker { display: none }
+details > summary::before { content: "▸ "; color: var(--muted) }
+details[open] > summary::before { content: "▾ " }
+.kv { display: grid; grid-template-columns: 84px 1fr; gap: 4px 10px; font-size: 14px }
+.kv dt { color: var(--muted) } .kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere }
+.empty-state { border: 1px dashed var(--line); border-radius: 8px; padding: 20px; color: var(--muted); text-align: center }
+.steps { display: flex; gap: 6px; flex-wrap: wrap; font: 600 13px var(--f-display); color: var(--muted) }
+.steps b { color: var(--ink) }
+@media (prefers-reduced-motion: no-preference) { .slip { transition: border-color .2s } }
+</style>
+
+<header><div class="wrap">
+  <div class="head">
+    <h1><span>STAR</span>내 말투 자소서</h1>
+    <div class="status" id="status">불러오는 중…</div>
+  </div>
+  <nav id="nav">
+    <a href="#write">자소서 작성</a>
+    <a href="#bank">경험 뱅크</a>
+    <a href="#style">내 말투</a>
+    <a href="#history">작성 기록</a>
+  </nav>
+</div></header>
+
+<main class="wrap" id="app">
+  <div class="empty-state" style="margin-top:24px">저장된 경험과 말투를 불러오는 중이에요.</div>
+</main>
+
+<script>
+"use strict";
+// ------------------------------------------------------------------ 상태
+const S = {
+  db: null, sample: null, owner: null, loaded: { exps: false, facts: false, drafts: false, profile: false, work: false },
+  exps: [], facts: [], drafts: [],
+  profile: { style_profile: "", samples: [] },
+  work: { company: "", job: "", posting: "", postingExtract: "", questionsRaw: "", questions: [], analysis: null },
+  images: [],            // 공고 이미지(메모리에만, 저장 안 함)
+  busy: "",              // 진행 중인 작업 설명
+  live: {},              // 스트리밍 중인 답변 {qIndex: text}
+  errors: {},
+  ctl: null,
+  reviseQs: {},          // 수정 요청 중 AI가 되물은 질문 {draftId: [질문]}
+};
+const ROUTES = ["write", "bank", "style", "history"];
+
+// ------------------------------------------------------------------ DOM 도우미 (모든 데이터는 textContent로)
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (k === "value") el.value = v;
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid instanceof Node ? kid : String(kid));
+  return el;
+}
+const uid = () => Math.random().toString(36).slice(2, 10);
+const now = () => new Date().toLocaleString("ko-KR", { dateStyle: "short", timeStyle: "short" });
+const stamp = () => Date.now();
+const countWith = t => (t || "").trim().length;
+const countNo = t => (t || "").replace(/\s/g, "").length;
+function countEl(text, limit) {
+  const n = countWith(text);
+  return h("span", { class: "count" + (limit && n > limit ? " over" : "") },
+    `공백 포함 ${n}자 · 제외 ${countNo(text)}자` + (limit ? ` / ${limit}자` : ""));
+}
+function sampleErr(e) {
+  const c = e && e.code;
+  if (c === "not_granted" || c === "sampling_disabled" || c === "not_declared") return "Claude 사용이 허용되지 않았어요. 이 페이지의 권한 메뉴에서 허용한 뒤 새로고침하세요.";
+  if (c === "rate_limited") return "지금은 요청이 많아요. 잠시 뒤 다시 눌러주세요.";
+  if (c === "invalid_json") return "AI 답변 형식이 깨졌어요. 다시 눌러주세요.";
+  if (c === "refused") return "AI가 이 요청에 답하지 않았어요. 입력 내용을 바꿔 다시 시도하세요.";
+  if (c === "prompt_too_large") return "입력이 너무 길어요. 공고를 핵심만 남겨주세요.";
+  if (c === "image_rejected") return "이미지를 읽을 수 없어요. JPG나 PNG로 다시 올려주세요.";
+  if (c === "cancelled") return "";
+  return "연결이 끊겼어요. 다시 눌러주세요.";
+}
+
+// ------------------------------------------------------------------ 저장소
+const col = name => S.db.collection(name);
+async function saveWork(patch) {
+  Object.assign(S.work, patch);
+  if (S.db) try { await S.db.doc("work/current").set(JSON.parse(JSON.stringify(S.work))); } catch (e) { flash("저장하지 못했어요: " + e.code); }
+}
+async function addFacts(items) {
+  for (const it of items) await col("facts").doc(it.id).set(it);
+}
+let flashTimer;
+function flash(msg) { const s = document.getElementById("status"); s.textContent = msg; clearTimeout(flashTimer); flashTimer = setTimeout(updateStatus, 4000); }
+function updateStatus() {
+  const s = document.getElementById("status");
+  if (!S.db) { s.textContent = "저장 기능 없음"; return; }
+  s.textContent = S.busy || `경험 ${S.exps.length} · 확인한 사실 ${S.facts.length} · 기록 ${S.drafts.length}`;
+}
+
+// ------------------------------------------------------------------ 프롬프트 재료
+const RULES = `[절대 규칙: 반드시 지킨다]
+1. <경험_뱅크>, <확인된_사실>, <공고> 에 적힌 내용만 사실로 쓴다. 경험, 수치, 기간, 회사명, 행동, 결과, 감정, 대사를 지어내거나 추측으로 채우지 않는다.
+2. 자료끼리 서로 맞지 않으면 한쪽을 고르지 않는다. 질문으로 돌린다.
+3. <확인된_사실>에서 지원자가 '모름'이라고 답한 내용은 쓰지 않는다.
+4. 경험의 '주의' 항목(쓰지 말 것)을 지킨다. 아직 하지 않은 일을 한 것처럼 쓰지 않는다.
+5. 공고에 없는 회사 정보(사업, 수치, 인재상)를 덧붙이지 않는다.`;
+
+function expText() {
+  if (!S.exps.length) return "(등록된 경험 없음)";
+  const L = [["period","기간"],["role","역할"],["situation","상황"],["action","행동"],["result","결과"],["learned","배운 점"],["tags","키워드"],["notes","주의"]];
+  return S.exps.map((e, i) => [`[경험 ${i + 1}] ${e.title}`, ...L.filter(([k]) => e[k]).map(([k, l]) => `- ${l}: ${e[k]}`)].join("\n")).join("\n\n");
+}
+function factText() {
+  if (!S.facts.length) return "(없음)";
+  return S.facts.map(f => `- Q: ${f.q}\n  A: ${f.a}`).join("\n");
+}
+function postingText() {
+  const w = S.work;
+  return [`회사: ${w.company || "(미입력)"}`, `직무: ${w.job || "(미입력)"}`,
+    w.posting ? `공고 원문:\n${w.posting.slice(0, 12000)}` : "",
+    w.postingExtract ? `공고 이미지에서 읽은 내용:\n${w.postingExtract}` : ""].filter(Boolean).join("\n");
+}
+function styleText() {
+  const samples = (S.profile.samples || []).slice(0, 4).map(s => `<샘플 제목="${s.title}">\n${(s.text || "").slice(0, 2500)}\n</샘플>`).join("\n");
+  return `<문체_프로필>\n${S.profile.style_profile || "(없음: 담백한 합쇼체)"}\n</문체_프로필>\n<내가_쓴_글_샘플>\n${samples || "(없음)"}\n</내가_쓴_글_샘플>`;
+}
+function baseContext() {
+  return `${RULES}\n\n<경험_뱅크>\n${expText()}\n</경험_뱅크>\n\n<확인된_사실>\n${factText()}\n</확인된_사실>\n\n<공고>\n${postingText()}\n</공고>`;
+}
+
+// ------------------------------------------------------------------ AI 단계
+async function splitQuestions() {
+  const raw = S.work.questionsRaw.trim();
+  if (!raw) return;
+  S.busy = "문항 나누는 중…"; render();
+  try {
+    const out = await S.sample.json(
+      `다음은 자기소개서 문항 원문이다. 문항별로 나눠라. 영어 번역문은 버린다. 글자수 제한이 적혀 있으면 숫자로, 없으면 null.\n` +
+      `JSON 배열로만 답한다. 예: [{"q":"지원 동기를 쓰세요.","limit":1000}]\n\n${raw}`, { modelTier: "quick" });
+    const qs = (Array.isArray(out) ? out : []).filter(x => x && x.q).map(x => ({ id: uid(), q: String(x.q).trim(), limit: Number(x.limit) || null }));
+    await saveWork({ questions: qs.length ? qs : S.work.questions, analysis: null });
+  } catch (e) { S.errors.split = sampleErr(e); }
+  S.busy = ""; render();
+}
+
+async function analyze() {
+  const qs = S.work.questions;
+  if (!qs.length) return;
+  S.busy = "공고와 문항 분석 중… (30초~1분)"; S.errors.analyze = ""; render();
+  const prompt = `너는 지원자 본인의 경험만으로 자기소개서를 쓰기 위한 사전 점검자다. 글은 쓰지 않는다.
+${baseContext()}
+
+<문항>
+${qs.map((q, i) => `${i + 1}. ${q.q} (글자수: ${q.limit ? q.limit + "자" : "제한 없음"})`).join("\n")}
+</문항>
+
+각 문항에 대해:
+- intent: 문항이 평가하려는 것 (1줄)
+- job_part: 문항이 직무 이해나 지원 동기를 묻는다면, 공고에 적힌 내용 중 쓸 수 있는 부분을 요약. 묻지 않으면 null. 공고에 근거가 없으면 null 로 두고 missing 에 질문을 넣는다.
+- experience: 경험 뱅크에서 가장 맞는 경험 1개의 제목 (없으면 null)
+- star: 그 경험을 STAR 로 나눈 것. S(상황), T(과제·목표), A(행동), R(결과) 각각 {"text": 자료에 적힌 사실만 요약, "source": 근거가 된 경험 제목 또는 "확인된 사실"}. 자료에 근거가 없으면 그 칸은 null.
+- missing: 이 문항을 사실대로 쓰기 위해 지원자에게 물어야 할 질문 목록. STAR 칸이 null 이면 반드시 그 칸을 채우는 구체적인 질문을 넣는다. 자료끼리 맞지 않는 점도 질문으로 넣는다. 이미 <확인된_사실>에 답이 있는 질문(모름 포함)은 다시 묻지 않는다.
+또 posting_extract: 첨부된 공고 이미지가 있으면 거기 적힌 직무 내용·자격·우대사항을 그대로 옮겨 적는다(없으면 "").
+
+JSON 으로만 답한다:
+{"posting_extract":"","questions":[{"intent":"","job_part":null,"experience":"","star":{"S":{"text":"","source":""},"T":null,"A":{"text":"","source":""},"R":null},"missing":["질문"]}]}`;
+  try {
+    const opts = { modelTier: "default", cache: false };
+    if (S.images.length) opts.images = S.images;
+    const out = await S.sample.json(prompt, opts);
+    if (!out || !Array.isArray(out.questions)) throw { code: "invalid_json" };
+    const patch = { analysis: { at: now(), questions: out.questions } };
+    if (out.posting_extract) patch.postingExtract = String(out.posting_extract);
+    await saveWork(patch);
+  } catch (e) { S.errors.analyze = sampleErr(e); }
+  S.busy = ""; render();
+}
+
+async function submitAnswers(form) {
+  const items = [];
+  form.querySelectorAll("textarea[data-q]").forEach(t => {
+    if (t.value.trim()) items.push({ id: uid(), created_at: now(), ts: stamp(), q: t.dataset.q, a: t.value.trim() });
+  });
+  if (!items.length) return;
+  S.busy = "답변 저장 중…"; render();
+  await addFacts(items);
+  S.busy = ""; render();
+  await analyze();
+}
+
+function writePrompt(q, a) {
+  const star = a && a.star ? Object.entries(a.star).map(([k, v]) => `${k}: ${v ? v.text : "(없음: 쓰지 않는다)"}`).join("\n") : "(없음)";
+  return `너는 지원자 본인을 대신해 자기소개서를 쓴다. 지원자가 직접 쓴 것처럼 읽혀야 한다.
+${styleText()}
+
+${baseContext()}
+
+<문항>
+${q.q}
+(글자수: ${q.limit ? `공백 포함 ${q.limit}자 이내` : "제한 없음"})
+</문항>
+
+<사전_점검>
+문항 의도: ${a ? a.intent : ""}
+직무 이해에 쓸 공고 내용: ${a && a.job_part ? a.job_part : "(없음)"}
+사용할 경험: ${a && a.experience ? a.experience : "(없음)"}
+${star}
+</사전_점검>
+
+[구성: STAR 기법]
+- 문항이 직무 이해나 지원 동기를 묻는 경우에만, 그 부분을 첫 문단에 공고 내용으로만 쓴다. 이 문단에서는 적합성을 어필하지 않는다.
+- 경험 부분: 첫 문장에 경험을 한 줄로 요약한다(두괄식). 그다음 S(상황) → T(과제·목표) → A(행동: 가장 자세히, 순서대로) → R(결과) 순서로 쓴다. 문항이 요구할 때만 마지막에 배운 점을 쓴다.
+- 경험은 1개를 중심으로 쓰고, 문단 사이와 문장 사이에 내용이나 단어가 겹치지 않게 한다.
+- 문항이 묻지 않은 기여 방식이나 다짐은 넣지 않는다.
+- 글자수를 넘기지 않는다. 글자수를 채우려고 사실을 덧붙이지 않는다.
+- 문체 프로필의 규칙(합쇼체, 거창한 단어·과장 부사·구어체 금지, 동료 시점)을 지킨다.
+
+본문만 출력한다. 제목, 설명, 글자수 표기, 따옴표 없이.`;
+}
+
+async function writeOne(i) {
+  const q = S.work.questions[i];
+  const a = S.work.analysis && S.work.analysis.questions[i];
+  S.live[i] = ""; S.errors["w" + i] = ""; render();
+  const ctl = new AbortController(); S.ctl = ctl;
+  try {
+    let { text } = await S.sample(writePrompt(q, a), {
+      modelTier: "complex", cache: false, signal: ctl.signal,
+      onText: ({ text }) => { S.live[i] = text; renderLive(i); },
+    });
+    text = text.trim();
+    if (q.limit && countWith(text) > q.limit) {
+      S.busy = `문항 ${i + 1} 글자수 줄이는 중…`; updateStatus();
+      const r = await S.sample(`다음 자기소개서 답변이 공백 포함 ${countWith(text)}자로 제한 ${q.limit}자를 넘었다. 말투와 내용은 그대로 두고 덜어내기만 해서 ${q.limit}자 이내로 줄여라. 새 사실이나 새 표현을 넣지 않는다. 본문만 출력한다.\n\n${text}`,
+        { modelTier: "default", cache: false, signal: ctl.signal });
+      text = r.text.trim();
+    }
+    const d = { id: uid(), created_at: now(), ts: stamp(), company: S.work.company, job: S.work.job, question: q.q, limit: q.limit, answer: text };
+    await col("drafts").doc(d.id).set(d);
+    delete S.live[i];
+    flash(`문항 ${i + 1}을 작성 기록에 저장했어요.`);
+  } catch (e) { S.errors["w" + i] = sampleErr(e); }
+  S.busy = ""; S.ctl = null; render();
+}
+
+async function writeAll() {
+  const a = S.work.analysis;
+  for (let i = 0; i < S.work.questions.length; i++) {
+    if (a && a.questions[i] && (a.questions[i].missing || []).length) continue;
+    S.busy = `문항 ${i + 1} 작성 중…`; updateStatus();
+    await writeOne(i);
+    if (S.errors["w" + i]) break;
+  }
+}
+
+async function revise(d, feedback, box) {
+  box.textContent = "다시 쓰는 중…";
+  try {
+    const { text } = await S.sample(`다음은 이전에 쓴 자기소개서 답변이다.
+${styleText()}
+
+${baseContext()}
+
+<문항>\n${d.question}\n(글자수: ${d.limit ? d.limit + "자 이내" : "제한 없음"})\n</문항>
+<답변>\n${d.answer}\n</답변>
+<수정_요청>\n${feedback}\n</수정_요청>
+
+수정 요청을 반영해 STAR 구성과 문체 규칙을 지키며 다시 써라. 본문만 출력한다.
+수정 요청을 반영하려면 자료에 없는 사실이 필요하다면, 지어내지 말고 본문 대신 첫 줄에 "[확인 필요]"라고 쓰고 그 아래에 물어볼 질문을 "- 질문" 형식으로 한 줄씩 쓴다.`,
+      { modelTier: "complex", cache: false, onText: ({ text }) => { box.textContent = text; } });
+    const t = text.trim();
+    if (t.startsWith("[확인 필요]")) {
+      const qs = t.split("\n").slice(1).map(l => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean);
+      S.reviseQs[d.id] = qs; render(); return;
+    }
+    let out = t;
+    if (d.limit && countWith(out) > d.limit) {
+      const r = await S.sample(`다음 답변을 말투와 내용은 그대로 두고 덜어내기만 해서 공백 포함 ${d.limit}자 이내로 줄여라. 새 사실을 넣지 않는다. 본문만 출력한다.\n\n${out}`, { cache: false });
+      out = r.text.trim();
+    }
+    await col("drafts").doc(d.id).update({ answer: out, revised_at: now() });
+  } catch (e) { box.textContent = sampleErr(e); }
+}
+
+async function reanalyzeStyle() {
+  const samples = S.profile.samples || [];
+  if (!samples.length) return;
+  S.busy = "말투 분석 중…"; render();
+  try {
+    const { text } = await S.sample(`너는 한국어 문체 분석가다. 아래는 지원자가 직접 쓴 글이다. 다른 사람이 이 사람처럼 쓸 수 있도록 문체 프로필을 markdown 으로 만든다.
+종결어미, 문장 길이와 리듬, 자주 쓰는 표현, 전개 방식, 톤과 시점, 어휘, 쓰지 않는 표현, 흉내 낼 때 핵심 규칙 5가지를 샘플 속 실제 표현을 인용해 정리한다. 샘플에 없는 특징은 지어내지 않는다.
+아래 '기존 프로필'에 지원자가 직접 지시한 규칙이 있으면 그대로 유지한다.
+
+<기존_프로필>\n${S.profile.style_profile || "(없음)"}\n</기존_프로필>
+${samples.map(s => `<샘플 제목="${s.title}">\n${s.text}\n</샘플>`).join("\n")}`, { modelTier: "complex", cache: false });
+    await S.db.doc("settings/profile").set({ ...S.profile, style_profile: text.trim() });
+  } catch (e) { flash(sampleErr(e)); }
+  S.busy = ""; render();
+}
+
+// ------------------------------------------------------------------ 화면: 자소서 작성
+function viewWrite() {
+  const w = S.work, a = w.analysis;
+  const noAI = !S.sample;
+  const field = (key, label, attrs = {}) => h("label", { for: "f-" + key }, label,
+    h(attrs.rows ? "textarea" : "input", { id: "f-" + key, type: "text", value: w[key] || "", ...attrs,
+      onchange: e => saveWork({ [key]: e.target.value }) }));
+
+  const step = n => h("div", { class: "steps" },
+    ["① 공고·문항 입력", "② 사실 확인", "③ STAR 작성"].map((t, i) => i + 1 === n ? h("b", {}, t) : h("span", {}, t)));
+
+  const out = [h("h2", {}, "새 자소서"), step(a ? (a.questions.some(x => (x.missing || []).length) ? 2 : 3) : 1),
+    h("p", { class: "lead" }, "공고와 문항을 넣으면, 먼저 STAR(상황·과제·행동·결과)마다 확인된 사실과 빈칸을 보여주고 빈칸은 질문합니다. 답이 다 채워진 문항만 씁니다.")];
+
+  const imgInput = h("input", { id: "f-img", type: "file", accept: "image/png,image/jpeg,image/webp", multiple: true,
+    onchange: e => { S.images = Array.from(e.target.files || []).slice(0, 5); render(); } });
+  out.push(h("div", { class: "slip" },
+    h("div", { class: "grid2" }, field("company", "회사"), field("job", "지원 직무")),
+    field("posting", "채용공고 · 직무 소개 · 인재상 (복사해서 붙여넣기)", { rows: 6 }),
+    h("label", { for: "f-img" }, "공고가 이미지라면 사진으로 올리기 (최대 5장, 저장되지 않고 분석할 때만 씁니다)", imgInput),
+    S.images.length ? h("div", { class: "note" }, `이미지 ${S.images.length}장 선택됨`) : null,
+    w.postingExtract ? h("details", {}, h("summary", {}, "이미지에서 읽은 공고 내용"), h("div", { class: "answer note" }, w.postingExtract)) : null,
+    h("label", { for: "f-questionsRaw" }, "자소서 문항 (여러 개를 한 번에 붙여넣기)",
+      h("textarea", { id: "f-questionsRaw", rows: 5, value: w.questionsRaw || "", onchange: e => saveWork({ questionsRaw: e.target.value }) })),
+    h("div", { class: "row" },
+      h("button", { disabled: noAI || !!S.busy, onclick: async () => { await saveWork({ questionsRaw: document.getElementById("f-questionsRaw").value }); splitQuestions(); } }, "문항 나누기"),
+      S.errors.split ? h("span", { class: "err" }, S.errors.split) : null)
+  ));
+
+  if (w.questions.length) {
+    out.push(h("h2", {}, "문항"));
+    const list = h("div", { class: "stack" });
+    w.questions.forEach((q, i) => list.append(h("div", { class: "slip" },
+      h("div", { class: "slip-top" }, h("span", { class: "tag" }, `문항 ${i + 1}`),
+        h("button", { class: "small ghost", onclick: () => saveWork({ questions: w.questions.filter((_, j) => j !== i), analysis: null }) }, "삭제")),
+      h("textarea", { id: "q-" + q.id, rows: 2, value: q.q, "aria-label": `문항 ${i + 1}`, onchange: e => { q.q = e.target.value; saveWork({ questions: w.questions, analysis: null }); } }),
+      h("label", { for: "l-" + q.id, style: "max-width:200px" }, "글자수 제한 (비우면 무제한)",
+        h("input", { id: "l-" + q.id, type: "number", min: 0, step: 50, value: q.limit || "", onchange: e => { q.limit = Number(e.target.value) || null; saveWork({ questions: w.questions }); } }))
+    )));
+    out.push(list);
+    out.push(h("div", { class: "row", style: "margin-top:12px" },
+      h("button", { class: "ghost small", onclick: () => saveWork({ questions: [...w.questions, { id: uid(), q: "", limit: null }] }) }, "+ 문항 추가"),
+      h("button", { class: "primary", disabled: noAI || !!S.busy || !w.questions.some(q => q.q.trim()), onclick: analyze }, a ? "다시 분석하기" : "② 사실 확인하기"),
+      S.errors.analyze ? h("span", { class: "err" }, S.errors.analyze) : null));
+  }
+
+  if (a) {
+    const allMissing = [];
+    out.push(h("h2", {}, "STAR 점검"), h("p", { class: "note" }, `${a.at} 분석`));
+    const list = h("div", { class: "stack" });
+    w.questions.forEach((q, i) => {
+      const r = a.questions[i]; if (!r) return;
+      const miss = r.missing || [];
+      miss.forEach(m => allMissing.push({ i, m }));
+      const starRows = ["S", "T", "A", "R"].flatMap(k => {
+        const v = r.star && r.star[k];
+        const name = { S: "상황", T: "과제·목표", A: "행동", R: "결과" }[k];
+        return [h("div", { class: "k" + (v ? "" : " empty") }, k),
+          h("div", { class: "v" + (v ? "" : " empty") }, v ? [v.text, h("small", {}, `${name} · 근거: ${v.source || "-"}`)] : `${name}: 자료에 없음`)];
+      });
+      const live = S.live[i];
+      list.append(h("div", { class: "slip" },
+        h("div", { class: "slip-top" }, h("h3", {}, `${i + 1}. ${q.q}`),
+          miss.length ? h("span", { class: "pill warn" }, `질문 ${miss.length}개`) : h("span", { class: "pill ok" }, "작성 가능")),
+        h("div", { class: "note" }, `의도: ${r.intent || "-"}`),
+        r.job_part ? h("div", { class: "note" }, `직무 이해(공고 근거): ${r.job_part}`) : null,
+        h("div", { class: "note" }, `사용할 경험: ${r.experience || "없음"}`),
+        h("div", { class: "star" }, starRows),
+        live != null ? h("div", { class: "answer", id: "live-" + i }, live || "생각하는 중…") : null,
+        live != null ? h("div", { class: "row" }, h("button", { class: "small", onclick: () => S.ctl && S.ctl.abort() }, "멈추기")) : null,
+        S.errors["w" + i] ? h("div", { class: "err" }, S.errors["w" + i]) : null,
+        h("div", { class: "row" },
+          h("button", { class: miss.length ? "" : "primary", disabled: noAI || !!S.busy || live != null, onclick: () => writeOne(i) },
+            miss.length ? "있는 사실로만 쓰기" : "③ 이 문항 쓰기"))
+      ));
+    });
+    if (allMissing.length) {
+      const form = h("form", { class: "ask", onsubmit: e => { e.preventDefault(); submitAnswers(e.currentTarget); } },
+        h("h3", {}, `확인이 필요해요 (${allMissing.length}개)`),
+        h("div", { class: "note" }, "지어내지 않기 위해 멈췄어요. 아는 만큼 답해주세요. 모르면 '모름'이라고 쓰면 그 부분은 쓰지 않습니다. 답은 경험 뱅크의 '확인한 사실'에 저장됩니다."),
+        ...allMissing.map(({ i, m }, k) => h("label", { for: "ans-" + k }, `[문항 ${i + 1}] ${m}`,
+          h("textarea", { id: "ans-" + k, rows: 2, "data-q": m }))),
+        h("div", { class: "row" }, h("button", { class: "primary", type: "submit", disabled: noAI || !!S.busy }, "답변 저장하고 다시 확인")));
+      out.push(form);
+    }
+    out.push(list);
+    const ready = w.questions.filter((_, i) => a.questions[i] && !(a.questions[i].missing || []).length).length;
+    if (ready) out.push(h("div", { class: "row", style: "margin-top:12px" },
+      h("button", { class: "primary", disabled: noAI || !!S.busy, onclick: writeAll }, `작성 가능한 ${ready}개 문항 모두 쓰기`)));
+  }
+  if (noAI) out.push(h("p", { class: "err" }, "이 화면에서는 Claude를 부를 수 없어요. claude.ai에서 이 페이지를 열어주세요."));
+  return out;
+}
+function renderLive(i) {
+  const el = document.getElementById("live-" + i);
+  if (el) el.textContent = S.live[i] || "생각하는 중…"; else render();
+}
+
+// ------------------------------------------------------------------ 화면: 경험 뱅크
+const EXP_FIELDS = [["title", "경험 이름"], ["period", "기간"], ["role", "역할"], ["situation", "상황 (S)"], ["action", "행동 (A)"], ["result", "결과 (R)"], ["learned", "배운 점"], ["tags", "키워드"], ["notes", "주의 (쓰지 말 것)"]];
+function expForm(e, onDone) {
+  const f = h("form", { class: "stack", onsubmit: async ev => {
+    ev.preventDefault();
+    const data = { id: e.id || uid() };
+    EXP_FIELDS.forEach(([k]) => { data[k] = f.querySelector(`[name=${k}]`).value.trim(); });
+    if (!data.title) return;
+    await col("experiences").doc(data.id).set({ ...e, ...data });
+    onDone();
+  } },
+    ...EXP_FIELDS.map(([k, l]) => h("label", { for: `e-${e.id || "new"}-${k}` }, l,
+      h(["title", "period", "role", "tags"].includes(k) ? "input" : "textarea", { id: `e-${e.id || "new"}-${k}`, name: k, type: "text", rows: 2, value: e[k] || "" }))),
+    h("div", { class: "row" }, h("button", { class: "primary", type: "submit" }, "저장"), h("button", { type: "button", class: "ghost", onclick: onDone }, "취소")));
+  return f;
+}
+let editing = null;
+function viewBank() {
+  const out = [h("h2", {}, "경험 뱅크"), h("p", { class: "lead" }, "AI는 여기 적힌 내용과 '확인한 사실'만 씁니다.")];
+  out.push(h("div", { class: "row" }, h("button", { class: "primary", onclick: () => { editing = "new"; render(); } }, "+ 경험 추가")));
+  if (editing === "new") out.push(h("div", { class: "slip" }, expForm({}, () => { editing = null; render(); })));
+  const list = h("div", { class: "stack", style: "margin-top:12px" });
+  if (!S.exps.length && S.loaded.exps) list.append(h("div", { class: "empty-state" }, "아직 경험이 없어요. '+ 경험 추가'로 첫 경험을 적어주세요."));
+  for (const e of S.exps) {
+    if (editing === e.id) { list.append(h("div", { class: "slip" }, expForm(e, () => { editing = null; render(); }))); continue; }
+    list.append(h("details", { class: "slip" }, h("summary", {}, e.title),
+      h("dl", { class: "kv" }, EXP_FIELDS.slice(1).filter(([k]) => e[k]).flatMap(([k, l]) => [h("dt", {}, l), h("dd", {}, e[k])])),
+      h("div", { class: "row" },
+        h("button", { class: "small", onclick: () => { editing = e.id; render(); } }, "고치기"),
+        confirmBtn("삭제", () => col("experiences").doc(e.id).delete()))));
+  }
+  out.push(list);
+  out.push(h("h2", {}, "확인한 사실"), h("p", { class: "lead" }, "AI 질문에 답한 내용이에요. 틀린 건 지우면 다음 글부터 반영돼요."));
+  const fl = h("div", { class: "stack" });
+  if (!S.facts.length && S.loaded.facts) fl.append(h("div", { class: "empty-state" }, "아직 없어요. 자소서 작성에서 AI가 질문하면 여기 쌓입니다."));
+  for (const f of S.facts) fl.append(h("div", { class: "slip" },
+    h("div", {}, h("b", {}, "Q. "), f.q), h("div", {}, h("b", {}, "A. "), f.a),
+    h("div", { class: "row" }, h("span", { class: "note" }, f.created_at || ""), confirmBtn("삭제", () => col("facts").doc(f.id).delete()))));
+  out.push(fl);
+  return out;
+}
+function confirmBtn(label, action) {
+  const b = h("button", { class: "small ghost", type: "button" }, label);
+  b.addEventListener("click", async () => {
+    if (b.dataset.armed) { b.disabled = true; await action(); return; }
+    b.dataset.armed = "1"; b.textContent = "정말 " + label + "?";
+    setTimeout(() => { delete b.dataset.armed; b.textContent = label; }, 3000);
+  });
+  return b;
+}
+
+// ------------------------------------------------------------------ 화면: 내 말투
+function viewStyle() {
+  const p = S.profile;
+  const out = [h("h2", {}, "말투 프로필"), h("p", { class: "lead" }, "AI가 글을 쓸 때 따르는 규칙이에요. 직접 고칠 수 있어요.")];
+  const ta = h("textarea", { id: "f-style", rows: 16, value: p.style_profile || "" });
+  out.push(h("div", { class: "slip" }, ta, h("div", { class: "row" },
+    h("button", { class: "primary", onclick: async () => { await S.db.doc("settings/profile").set({ ...p, style_profile: ta.value }); flash("말투 프로필을 저장했어요."); } }, "저장"),
+    h("button", { disabled: !S.sample || !!S.busy || !(p.samples || []).length, onclick: reanalyzeStyle }, "샘플로 다시 분석"))));
+  out.push(h("h2", {}, "내가 쓴 글 샘플"));
+  const nt = h("input", { id: "s-title", type: "text", placeholder: "제목" }), nx = h("textarea", { id: "s-text", rows: 5, placeholder: "직접 쓴 자소서나 글" });
+  out.push(h("div", { class: "slip" }, nt, nx, h("div", { class: "row" }, h("button", { onclick: async () => {
+    if (!nx.value.trim()) return;
+    await S.db.doc("settings/profile").set({ ...p, samples: [...(p.samples || []), { id: uid(), title: nt.value || "제목 없음", text: nx.value.trim() }] });
+  } }, "샘플 추가"))));
+  const list = h("div", { class: "stack", style: "margin-top:12px" });
+  for (const s of p.samples || []) list.append(h("details", { class: "slip" }, h("summary", {}, `${s.title} (${countWith(s.text)}자)`),
+    h("div", { class: "answer" }, s.text),
+    h("div", { class: "row" }, confirmBtn("삭제", () => S.db.doc("settings/profile").set({ ...p, samples: p.samples.filter(x => x.id !== s.id) })))));
+  out.push(list);
+  return out;
+}
+
+// ------------------------------------------------------------------ 화면: 작성 기록
+function viewHistory() {
+  const out = [h("h2", {}, "작성 기록")];
+  if (!S.drafts.length && S.loaded.drafts) out.push(h("div", { class: "empty-state" }, "아직 작성한 답변이 없어요."));
+  const list = h("div", { class: "stack" });
+  for (const d of S.drafts) {
+    const ta = h("textarea", { id: "d-" + d.id, rows: 12, value: d.answer || "" });
+    const cnt = h("div", {}, countEl(d.answer, d.limit));
+    ta.addEventListener("input", () => cnt.replaceChildren(countEl(ta.value, d.limit)));
+    const box = h("div", { class: "answer note" });
+    const fb = h("input", { id: "fb-" + d.id, type: "text", placeholder: "예: 두 번째 문단을 더 구체적으로 / 마지막 문장이 어색해" });
+    const rq = S.reviseQs[d.id];
+    const qBox = rq ? h("form", { class: "ask", onsubmit: async e => {
+      e.preventDefault(); await submitFacts(e.currentTarget); delete S.reviseQs[d.id]; render(); } },
+      h("h3", {}, "수정하려면 확인이 필요해요"),
+      ...rq.map((q, k) => h("label", { for: `rq-${d.id}-${k}` }, q, h("textarea", { id: `rq-${d.id}-${k}`, rows: 2, "data-q": q }))),
+      h("div", { class: "row" }, h("button", { class: "primary", type: "submit" }, "답변 저장"))) : null;
+    list.append(h("details", { class: "slip" },
+      h("summary", {}, `${d.company || "-"} · ${(d.question || "").slice(0, 40)}`),
+      h("div", { class: "note" }, `${d.created_at || ""}${d.job ? " · " + d.job : ""}`),
+      h("div", {}, h("b", {}, "문항 "), d.question),
+      ta, cnt,
+      h("div", { class: "row" },
+        h("button", { class: "small", onclick: async () => { await col("drafts").doc(d.id).update({ answer: ta.value }); flash("저장했어요."); } }, "직접 고친 내용 저장"),
+        h("button", { class: "small", onclick: async ev => {
+          try { await navigator.clipboard.writeText(ta.value); ev.target.textContent = "복사됨"; }
+          catch { ta.select(); ev.target.textContent = "선택됨: 복사하세요"; } } }, "복사"),
+        confirmBtn("삭제", () => col("drafts").doc(d.id).delete())),
+      h("label", { for: "fb-" + d.id }, "AI에게 수정 요청", fb),
+      h("div", { class: "row" }, h("button", { disabled: !S.sample, onclick: () => fb.value.trim() && revise(d, fb.value.trim(), box) }, "다시 쓰기")),
+      box, qBox));
+  }
+  out.push(list);
+  return out;
+}
+async function submitFacts(form) {
+  const items = [];
+  form.querySelectorAll("textarea[data-q]").forEach(t => { if (t.value.trim()) items.push({ id: uid(), created_at: now(), ts: stamp(), q: t.dataset.q, a: t.value.trim() }); });
+  await addFacts(items);
+  flash("확인한 사실에 저장했어요. 다시 쓰기를 눌러주세요.");
+}
+
+// ------------------------------------------------------------------ 렌더링
+function route() { const r = location.hash.slice(1); return ROUTES.includes(r) ? r : "write"; }
+function render() {
+  const r = route();
+  document.querySelectorAll("#nav a").forEach(a => a.setAttribute("aria-current", a.getAttribute("href") === "#" + r ? "page" : "false"));
+  updateStatus();
+  const app = document.getElementById("app");
+  if (!S.db) {
+    app.replaceChildren(h("div", { class: "empty-state", style: "margin-top:24px" }, S.dbFailed
+      ? "저장소에 연결할 수 없어요. claude.ai에 로그인한 상태로 이 페이지를 열어주세요."
+      : "저장된 경험과 말투를 불러오는 중이에요."));
+    return;
+  }
+  if (S.owner === false) {
+    app.replaceChildren(h("div", { class: "empty-state", style: "margin-top:24px" }, "이 페이지의 데이터는 만든 사람만 볼 수 있어요."));
+    return;
+  }
+  const active = document.activeElement && document.activeElement.id;
+  const view = { write: viewWrite, bank: viewBank, style: viewStyle, history: viewHistory }[r]();
+  const open = new Set([...app.querySelectorAll("details[open] > summary")].map(s => s.textContent));
+  app.replaceChildren(...view);
+  app.querySelectorAll("details > summary").forEach(s => { if (open.has(s.textContent)) s.parentElement.open = true; });
+  if (active) { const el = document.getElementById(active); if (el && el.focus) el.focus({ preventScroll: true }); }
+}
+addEventListener("hashchange", render);
+
+// 입력 중에는 다시 그리지 않음 (스냅샷이 와도 타이핑이 끊기지 않게)
+let pending = false;
+function softRender() {
+  const a = document.activeElement;
+  if (a && (a.tagName === "TEXTAREA" || a.tagName === "INPUT")) { if (!pending) { pending = true; a.addEventListener("blur", () => { pending = false; render(); }, { once: true }); } return; }
+  render();
+}
+
+(async function boot() {
+  render();
+  if (!window.claude || !window.claude.use) { S.dbFailed = true; render(); return; }
+  const [db, sample, user] = await Promise.all([claude.use("db"), claude.use("sample"), claude.use("user")]);
+  S.sample = sample;
+  if (user) S.owner = await user.isOwner().catch(() => null);
+  if (!db) { S.dbFailed = true; render(); return; }
+  S.db = db;
+  const timer = setTimeout(() => { if (!Object.values(S.loaded).every(Boolean)) flash("저장소 응답이 늦어요. 잠시 기다려주세요."); }, 10000);
+  const done = k => { S.loaded[k] = true; if (Object.values(S.loaded).every(Boolean)) clearTimeout(timer); };
+  const onErr = e => flash("불러오기 실패: " + e.code);
+  db.collection("experiences").onSnapshot(s => { S.exps = s.docs.map(d => d.data()).sort((a, b) => (a.order ?? 999) - (b.order ?? 999)); done("exps"); softRender(); }, onErr);
+  db.collection("facts").onSnapshot(s => { S.facts = s.docs.map(d => d.data()).sort((a, b) => (a.ts || 0) - (b.ts || 0)); done("facts"); softRender(); }, onErr);
+  db.collection("drafts").onSnapshot(s => { S.drafts = s.docs.map(d => d.data()).sort((a, b) => (b.ts || 0) - (a.ts || 0) || (a.order ?? 0) - (b.order ?? 0)); done("drafts"); softRender(); }, onErr);
+  db.doc("settings/profile").onSnapshot(s => { if (s.exists) S.profile = { samples: [], ...s.data() }; done("profile"); softRender(); }, onErr);
+  db.doc("work/current").onSnapshot(s => { if (s.exists && !s.metadata.hasPendingWrites) S.work = { ...S.work, ...JSON.parse(JSON.stringify(s.data())) }; done("work"); softRender(); }, onErr);
+})();
+</script>
