@@ -54,6 +54,9 @@ input, textarea, select {
   background: #f4f5f8; border: 1px solid transparent; border-radius: 14px; padding: 12px 13px; outline: none;
 }
 textarea { resize: vertical; line-height: 1.6; }
+/* 아이폰에서 날짜/시간 칸이 화면 밖으로 삐져나가지 않게 */
+input[type=date], input[type=time] { -webkit-appearance: none; appearance: none; display: block; min-width: 0; max-width: 100%; min-height: 48px; text-align: left; }
+input::-webkit-date-and-time-value { text-align: left; }
 input:focus, textarea:focus, select:focus { border-color: #b9bfcc; background: #fff; }
 label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); }
 label > input, label > textarea, label > select, label > .seg, label > .stars, label > .photo-field { margin-top: 6px; }
@@ -263,6 +266,16 @@ label.row input { width: auto; margin: 0; }
 .photo-field { display: flex; align-items: center; gap: 12px; }
 .photo-field .thumb { background-color: #f1f2f5; font-size: 22px; cursor: pointer; }
 .seg-input { margin-bottom: 0; }
+/* 누구 일정인지: 캘린더 위 버튼처럼 사람마다 색 */
+.seg-own { background: none; padding: 0; gap: 8px; }
+.seg-own button { border-radius: 99px; padding: 12px 6px; font-weight: 800; font-size: 15px; opacity: .55; border: 2px solid transparent; transition: opacity .15s, transform .15s; }
+.seg-own button.on { opacity: 1; box-shadow: 0 2px 8px rgba(0,0,0,.12); transform: scale(1.02); }
+.seg-own button.own-p1 { background: linear-gradient(135deg, #ffe1ea, #e6e9ff); color: var(--own-p1-fg); }
+.seg-own button.own-p2 { background: linear-gradient(135deg, #dde7ff, #eef3ff); color: var(--own-p2-fg); }
+.seg-own button.own-both { background: linear-gradient(135deg, #fff6e4, #f3f4f8); color: var(--own-both-fg); }
+.seg-own button.own-p1.on { border-color: var(--own-p1-fg); }
+.seg-own button.own-p2.on { border-color: var(--own-p2-fg); }
+.seg-own button.own-both.on { border-color: var(--own-both-fg); }
 
 /* 모달 */
 .modal { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.35); display: flex; align-items: flex-end; justify-content: center; }

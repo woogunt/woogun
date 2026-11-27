@@ -264,7 +264,7 @@
   let artifactBackend = null; // claude.ai 링크(아티팩트)의 공유 저장소
   async function sync() {
     if (artifactBackend) return artifactBackend;
-    if (!syncMod) syncMod = await import("./sync.js?v=2026112706121"); // 버전 표시로 예전 저장본 대신 새 파일
+    if (!syncMod) syncMod = await import("./sync.js?v=2026112723542"); // 버전 표시로 예전 저장본 대신 새 파일
     await syncMod.init();
     return syncMod;
   }
@@ -535,8 +535,8 @@
         inner = `<textarea name="${f.name}" rows="${f.rows || 5}" ${req} ${ph} ${ml}>${esc(v)}</textarea>`; break;
       case "seg":
         inner = `<input type="hidden" name="${f.name}" value="${esc(v)}" />
-          <div class="seg seg-input" data-seg="${f.name}">${f.options.map((o) =>
-            `<button type="button" data-v="${esc(o.value)}" class="${o.value === v ? "on" : ""}">${esc(o.label)}</button>`).join("")}</div>`;
+          <div class="seg seg-input ${f.colored ? "seg-own" : ""}" data-seg="${f.name}">${f.options.map((o) =>
+            `<button type="button" data-v="${esc(o.value)}" class="${f.colored ? "own-" + esc(o.value) : ""} ${o.value === v ? "on" : ""}">${esc(o.label)}</button>`).join("")}</div>`;
         break;
       case "select":
         inner = `<select name="${f.name}">${f.options.map((o) =>
@@ -1609,7 +1609,7 @@
     openForm({
       title: ev ? "일정 수정" : `${fmtW(parse(date))} 일정`,
       fields: [
-        { name: "owner", label: "누구 일정인가요?", type: "seg", value: ev ? ownerOf(ev) : "both", options: owners },
+        { name: "owner", label: "누구 일정인가요?", type: "seg", colored: true, value: ev ? ownerOf(ev) : "both", options: owners },
         { name: "title", label: "일정", value: ev?.title, required: true, max: 40, placeholder: "예) 롯데월드 데이트" },
         { name: "date", label: "날짜", type: "date", value: ev ? ev.date : date, required: true },
         { name: "time", label: "시간 (선택)", type: "time", value: ev?.time || "" },
