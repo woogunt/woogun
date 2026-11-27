@@ -48,7 +48,7 @@
   .hint { color: var(--muted); margin: 0; font-size: 14px; }
 
   .floor-plan { display: flex; flex-wrap: wrap; gap: 28px 24px; align-items: flex-start; }
-  .room { flex: var(--grow) 1 var(--basis); min-width: 0; display: flex; flex-direction: column; align-items: center; }
+  .room { position: relative; flex: var(--grow) 1 var(--basis); min-width: 0; display: flex; flex-direction: column; align-items: center; }
 
   /* 매달린 표지판 */
   .sign-wrap { position: relative; padding-top: 22px; margin-bottom: -6px; z-index: 2; }
@@ -100,7 +100,7 @@
   /* 말풍선 */
   .bubble {
     position: absolute;
-    width: 230px;
+    width: 260px;
     background: #FFFFFF;
     color: #3E3550;
     border: 2.5px solid #3E3550;
@@ -119,6 +119,8 @@
   .bubble b { font-family: var(--font-display); font-weight: 400; font-size: 18px; }
   .bubble .role { display: inline-block; font-size: 12px; background: var(--chip); border-radius: 999px; padding: 1px 9px; margin-left: 6px; vertical-align: 2px; }
   .bubble p { margin: 6px 0 0; font-size: 14px; line-height: 1.5; }
+  .bubble .order { margin-top: 8px; padding-top: 8px; border-top: 2px dashed #E3DAF0; }
+  .bubble .order em { display: block; font-style: normal; font-family: var(--font-display); font-size: 13px; color: #E2667F; }
   @keyframes pop { from { transform: translate(-50%, calc(-100% - 4px)) scale(.6); opacity: 0; } }
 
   .roster { margin-top: 26px; display: flex; flex-wrap: wrap; gap: 8px; }
@@ -152,9 +154,11 @@ const TEAMS = [
     width: 640,
     members: [
       { name: "호길", role: "주식 트레이더", shirt: "#7EB6F2", hair: "short", hairColor: "#3B2B24",
-        duty: "장이 열리면 주문을 넣고, 보유 종목의 손절·익절 라인을 지키며 포지션을 관리해요." },
+        duty: "장이 열리면 주문을 넣고, 보유 종목의 손절·익절 라인을 지키며 포지션을 관리해요.",
+        order: "국내주식 ETF(코스피200) 24%, 국고채 ETF 32%를 12월·1월·2월 첫 거래일에 3번 나눠 매수." },
       { name: "대길", role: "주식 트레이더", shirt: "#FFB570", hair: "spiky", hairColor: "#2C2430",
-        duty: "분석 팀의 매수·매도 신호를 받아 실제 주문으로 옮기고, 체결 내역을 매일 정리해요." },
+        duty: "분석 팀의 매수·매도 신호를 받아 실제 주문으로 옮기고, 체결 내역을 매일 정리해요.",
+        order: "미국주식 ETF(S&P500) 36%를 3번 나눠 매수하고 환전도 같이 나눠서. 현금 8%는 파킹통장에." },
     ],
   },
   {
@@ -163,11 +167,14 @@ const TEAMS = [
     width: 920,
     members: [
       { name: "호성", role: "주가 전망 분석", shirt: "#9ED98B", hair: "part", hairColor: "#4A3328",
-        duty: "실적·금리·업황 자료를 모아 종목별 주가 전망 리포트를 만들어요." },
+        duty: "실적·금리·업황 자료를 모아 종목별 주가 전망 리포트를 만들어요.",
+        order: "분기 말마다 각 ETF가 10개월 평균선 위인지 아래인지 보고. 보고만 하고 자동 매도는 안 함." },
       { name: "성호", role: "매수·매도 판단", shirt: "#F79AB8", hair: "curly", hairColor: "#33262A",
-        duty: "전망 리포트와 차트를 보고 지금 살지, 팔지, 기다릴지를 결정해요." },
+        duty: "전망 리포트와 차트를 보고 지금 살지, 팔지, 기다릴지를 결정해요.",
+        order: "분기 말 점검에서 목표 비중보다 5%p 넘게 벗어나면 리밸런싱 지시. 고점 대비 -20%면 계획 재검토 회의." },
       { name: "미나", role: "매수·매도 추천", shirt: "#FFD86E", hair: "bob", hairColor: "#5A3A2C",
-        duty: "판단 결과를 쉬운 말로 정리해 추천 종목과 이유를 트레이딩 팀에 전달해요." },
+        duty: "판단 결과를 쉬운 말로 정리해 추천 종목과 이유를 트레이딩 팀에 전달해요.",
+        order: "주식이 고점 대비 15% 넘게 빠지면 채권 5%p를 주식으로 옮기자고 추천. 매달 1장짜리 리포트 작성." },
     ],
   },
 ];
@@ -432,12 +439,12 @@ function show(el) {
   if (activeEl === el) { hide(); return; }
   hide();
   const { m, t } = lookup[el.dataset.name];
-  const inner = el.closest(".stage-inner");
+  const inner = el.closest(".room");
   const head = el.querySelector(".head").getBoundingClientRect();
   const box = inner.getBoundingClientRect();
   const cx = head.left + head.width / 2 - box.left;
   const top = head.top - box.top;
-  const half = 115, minX = half + 4, maxX = box.width - half - 4;
+  const half = 130, minX = half + 4, maxX = box.width - half - 4;
   const x = Math.max(minX, Math.min(maxX, cx));
   bubble = document.createElement("div");
   bubble.className = "bubble";
@@ -446,7 +453,7 @@ function show(el) {
   bubble.style.top = top + "px";
   bubble.style.setProperty("--tail", (half + (cx - x)) + "px");
   bubble.style.setProperty("--chip", t.wall);
-  bubble.innerHTML = `<b>${m.name}</b><span class="role">${m.role}</span><p>${m.duty}</p>`;
+  bubble.innerHTML = `<b>${m.name}</b><span class="role">${m.role}</span><p>${m.duty}</p><p class="order"><em>이번 지시</em>${m.order}</p>`;
   inner.appendChild(bubble);
   activeEl = el;
   el.classList.add("active");
@@ -463,4 +470,5 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape") hide();
 });
 window.addEventListener("resize", hide);
+document.querySelectorAll(".stage").forEach(st => st.addEventListener("scroll", hide, { passive: true }));
 </script>
