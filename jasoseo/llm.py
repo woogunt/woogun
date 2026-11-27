@@ -31,12 +31,30 @@ def format_experiences(experiences: list[dict]) -> str:
         for key, label in [
             ("period", "기간"), ("role", "역할"), ("situation", "상황/문제"),
             ("action", "내가 한 행동"), ("result", "결과/성과"),
-            ("learned", "배운 점"), ("tags", "키워드"),
+            ("learned", "배운 점"), ("tags", "키워드"), ("notes", "확인된 추가 사실"),
         ]:
             if e.get(key):
                 lines.append(f"- {label}: {e[key]}")
         blocks.append("\n".join(lines))
     return "\n\n".join(blocks)
+
+
+def parse_questions(text: str) -> list[str]:
+    """작성 계획의 '### 부족한 정보' 섹션, 또는 '[확인 필요]' 응답에서 질문 목록을 꺼낸다."""
+    if text.lstrip().startswith("[확인 필요]"):
+        body = text.lstrip()[len("[확인 필요]"):]
+    elif "### 부족한 정보" in text:
+        body = text.split("### 부족한 정보", 1)[1].split("\n###", 1)[0]
+    else:
+        return []
+    questions = []
+    for line in body.splitlines():
+        line = line.strip()
+        if line.startswith(("-", "•", "*")):
+            q = line.lstrip("-•* ").strip()
+            if q and q != "없음":
+                questions.append(q)
+    return questions
 
 
 def limit_text(limit: int | None) -> str:
@@ -92,10 +110,14 @@ class Writer:
         )
         return self._stream(prompts.STYLE_ANALYSIS_SYSTEM, f"다음은 내가 직접 쓴 글들이다.\n\n{joined}")
 
-    def writer_system(self, style_profile: str, experiences: list[dict]) -> str:
+    def writer_system(self, style_profile: str, experiences: list[dict], facts: list[dict] | None = None) -> str:
+        exp_text = format_experiences(experiences)
+        if facts:
+            qa = "\n".join(f"- Q: {f['q']}\n  A: {f['a']}" for f in facts)
+            exp_text += f"\n\n[지원자에게 직접 확인한 사실]\n{qa}"
         return prompts.WRITER_SYSTEM.format(
             style_profile=style_profile or "(문체 프로필 없음)",
-            experiences=format_experiences(experiences),
+            experiences=exp_text,
         )
 
     def plan(self, system: str, ctx: dict) -> Iterator[str]:

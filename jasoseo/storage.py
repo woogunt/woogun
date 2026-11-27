@@ -15,6 +15,7 @@ EMPTY_DB = {
     "style_profile": "",  # 분석된 말투 프로필 (markdown)
     "experiences": [],    # [{id, title, period, role, situation, action, result, learned, tags}]
     "drafts": [],         # [{id, created_at, company, job, question, limit, answer}]
+    "facts": [],          # AI 질문에 대한 내 답변 [{id, created_at, q, a}]
 }
 
 

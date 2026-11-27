@@ -10,7 +10,7 @@ import os
 import streamlit as st
 
 from jasoseo import storage
-from jasoseo.llm import GenerationError, Writer, char_count, limit_text
+from jasoseo.llm import GenerationError, Writer, char_count, limit_text, parse_questions
 
 st.set_page_config(page_title="내 말투 자소서", page_icon="✍️", layout="wide")
 
@@ -66,6 +66,35 @@ def show_count(text: str, limit: int | None):
     else:
         st.info(msg)
 
+
+if "pending_questions" not in st.session_state:
+    st.session_state.pending_questions = []  # [{"from": 문항/수정 설명, "q": 질문}]
+
+
+def ask_user(source: str, questions: list[str]):
+    for q in questions:
+        st.session_state.pending_questions.append({"from": source, "q": q})
+
+
+# ---------------------------------------------------------------- AI 질문
+if st.session_state.pending_questions:
+    st.warning("**AI가 사실을 지어내지 않도록 멈췄어요.** 아래 질문에 답해주시면 그 내용으로만 다시 씁니다. "
+               "모르면 '모름'이라고 적어주세요. 그 부분은 쓰지 않아요.")
+    with st.form("answer_questions"):
+        answers = []
+        for i, item in enumerate(st.session_state.pending_questions):
+            answers.append(st.text_area(f"[{item['from']}] {item['q']}", key=f"pq_{i}", height=70))
+        if st.form_submit_button("답변 저장", type="primary"):
+            for item, a in zip(st.session_state.pending_questions, answers):
+                if a.strip():
+                    db["facts"].append({"id": storage.new_id(), "created_at": storage.now(),
+                                        "q": item["q"], "a": a.strip()})
+            st.session_state.pending_questions = [
+                item for item, a in zip(st.session_state.pending_questions, answers) if not a.strip()
+            ]
+            persist()
+            st.success("저장했어요. 다시 생성하면 이 답변을 반영합니다.")
+            st.rerun()
 
 tab_style, tab_exp, tab_write, tab_history = st.tabs(
     ["① 내 말투 학습", "② 경험 뱅크", "③ 자소서 작성", "④ 작성 기록"]
@@ -147,6 +176,18 @@ with tab_exp:
                 persist()
                 st.rerun()
 
+    st.divider()
+    st.subheader("AI 질문에 내가 답한 사실")
+    if not db["facts"]:
+        st.caption("아직 없습니다. AI가 정보가 부족하다고 질문하면 여기에 쌓여요.")
+    for f in db["facts"]:
+        c1, c2 = st.columns([10, 1])
+        c1.markdown(f"**Q.** {f['q']}  \n**A.** {f['a']}")
+        if c2.button("삭제", key=f"del_fact_{f['id']}"):
+            db["facts"] = [x for x in db["facts"] if x["id"] != f["id"]]
+            persist()
+            st.rerun()
+
 # ---------------------------------------------------------------- ③ 작성
 with tab_write:
     st.subheader("지원 정보")
@@ -183,7 +224,7 @@ with tab_write:
         if not questions:
             st.error("문항을 하나 이상 입력하세요.")
         experiences = [exp_titles[t] for t in picked] if picked else db["experiences"]
-        system = writer.writer_system(db["style_profile"], experiences)
+        system = writer.writer_system(db["style_profile"], experiences, db["facts"])
         results = []
         for i, q in enumerate(questions, 1):
             limit = int(q["limit"]) or None
@@ -200,6 +241,12 @@ with tab_write:
                     st.error(str(e))
                     plan = None
             if not plan:
+                continue
+            questions = parse_questions(plan)
+            if questions:
+                st.warning("사실이 부족해서 이 문항은 쓰지 않았어요. 위쪽 질문에 답한 뒤 다시 생성하세요.\n\n"
+                           + "\n".join(f"- {q}" for q in questions))
+                ask_user(f"문항 {i}", questions)
                 continue
             answer = run_stream(writer.write(system, ctx, plan, extra))
             if not answer:
@@ -221,6 +268,8 @@ with tab_write:
         if results:
             persist()
             st.success(f"{len(results)}개 답변을 ④ 작성 기록에 저장했습니다. 거기서 수정 요청도 할 수 있어요.")
+        if st.session_state.pending_questions:
+            st.rerun()
 
 # ---------------------------------------------------------------- ④ 기록
 with tab_history:
@@ -248,9 +297,12 @@ with tab_history:
             if st.button("🔁 다시 쓰기", key=f"rev_{d['id']}") and feedback and (writer := get_writer()):
                 ids = set(d.get("experience_ids") or [])
                 exps = [e for e in db["experiences"] if e["id"] in ids] or db["experiences"]
-                system = writer.writer_system(db["style_profile"], exps)
+                system = writer.writer_system(db["style_profile"], exps, db["facts"])
                 new = run_stream(writer.revise(system, d["question"], d.get("limit"), answer, feedback))
-                if new:
+                if new and (questions := parse_questions(new)):
+                    ask_user("수정 요청", questions)
+                    st.rerun()
+                elif new:
                     new = writer.fit_limit(system, new, d.get("limit"))
                     d["answer"] = new
                     persist()
