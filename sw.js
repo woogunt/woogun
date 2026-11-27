@@ -1,5 +1,5 @@
-// 월급 쪼개기 서비스 워커 — 버전 4439dbe6fe
-const CACHE = 'salary-split-4439dbe6fe';
+// 월급 쪼개기 서비스 워커 — 버전 36f6c85aa6
+const CACHE = 'salary-split-36f6c85aa6';
 const CORE = ['./', './index.html', './manifest.webmanifest', './apple-touch-icon.png', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
