@@ -25,7 +25,7 @@ L = np.linalg.cholesky(cov_m + np.eye(4) * 1e-12)
 
 # 꼬리가 두꺼운 수익률 (t분포, 자유도 5) → 폭락 달이 정규분포보다 자주 나옴
 df = 5
-z = rng.standard_t(df, size=(N, BURN + M, 4)) / np.sqrt(df / (df - 2))
+z = rng.standard_t(df, size=(N, BURN + 60, 4))   # 최대 5년치 경로 생성 / np.sqrt(df / (df - 2))
 ret = np.log1p(mu) / 12 + z @ L.T          # mu = 연 복리(기하) 기대수익
 ret = np.expm1(ret)                       # 월 단순수익률
 price = np.cumprod(1 + ret, axis=1)        # 자산별 가격 지수
