@@ -571,6 +571,16 @@ dialog.sheet { border-radius: 26px 26px 0 0; }
 .menu-i { padding: 18px; } .menu-i b { font-weight: 700; }
 .inbox-card { background: var(--today); }
 .panel { padding: 22px; }
+
+.rc-sum { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; background: var(--soft); border-radius: 16px; padding: 12px; }
+.rc-sum div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rc-sum span { font-size: 0.75rem; color: var(--muted); } .rc-sum b { font-weight: 800; font-size: clamp(0.82rem, 3.6vw, 1rem); white-space: nowrap; letter-spacing: -0.02em; } .rc-sum b.sav { color: var(--save); }
+.rc-list { display: flex; flex-direction: column; }
+.rc-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 0; }
+.rc-row .tx-ic { width: 44px; height: 44px; font-size: 1.25rem; border-radius: 14px; }
+.rc-r { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; } .rc-r b { font-weight: 800; white-space: nowrap; }
+.rc-dd2 { font-size: 0.7rem; font-weight: 700; color: var(--accent); background: var(--today); border-radius: 999px; padding: 1px 8px; }
+#r-presets .chip { font-size: 0.82rem; }
 </style>
 
 </head>
@@ -588,6 +598,7 @@ dialog.sheet { border-radius: 26px 26px 0 0; }
     <button class="card card-btn inbox-card" id="h-inbox" type="button" hidden></button>
     <div class="trio" id="h-trio"></div>
     <section class="card" id="h-budget"></section>
+    <section class="card" id="h-recur"></section>
     <section class="card">
       <div class="card-h"><b>이번 주 기록</b><span class="note" id="h-week-range"></span></div>
       <div class="week" id="h-week"></div>
@@ -627,7 +638,7 @@ dialog.sheet { border-radius: 26px 26px 0 0; }
 
   <div id="pg-more" class="page" hidden>
     <div class="menu">
-      <button class="menu-i" id="m-recur" type="button"><b>고정지출·정기결제</b><span id="m-recur-sub">매달 나가는 돈을 등록하면 결제일에 자동으로 기록돼요</span></button>
+      <button class="menu-i" id="m-recur" type="button"><b>매달 자동 공제</b><span id="m-recur-sub">매달 나가는 돈을 등록하면 결제일에 자동으로 기록돼요</span></button>
       <button class="menu-i" id="m-auto" type="button"><b>결제 알림 자동 기록</b><span>토스·카드 앱 알림, 승인 문자, Apple Pay 결제를 단축어로 받아와요</span></button>
       <button class="menu-i" id="m-inbox" type="button"><b>확인 대기</b><span id="m-inbox-sub">자동으로 들어온 기록을 확인해요</span></button>
       <button class="menu-i" id="m-settings" type="button"><b>설정</b><span>앱 아이콘 · 기기 연동</span></button>
@@ -879,16 +890,17 @@ dialog.sheet { border-radius: 26px 26px 0 0; }
 </dialog>
 
 <dialog class="sheet" id="sheetRecur" aria-labelledby="sheetRecurT">
-  <div class="sheet-h"><b id="sheetRecurT">고정지출·정기결제</b><button class="btn ghost" type="button" data-close>닫기</button></div>
+  <div class="sheet-h"><b id="sheetRecurT">매달 자동 공제</b><button class="btn ghost" type="button" data-close>닫기</button></div>
   <div class="sheet-b">
     <div class="recur-top" id="recur-top"></div>
-    <p class="set-note">등록해 두면 <b>매달 결제일에 자동으로 기록</b>돼요 (앱을 연 날 기준). 적금·청약 자동이체는 ‘저축’으로 등록하면 지출에 섞이지 않아요.</p>
+    <p class="set-note">적금·투자·청약 같은 <b>자동이체 저축</b>과 통신비·월세 같은 <b>고정비</b>를 등록하면, 매달 그날 <b>자동으로 기록</b>돼요 (그날 이후 앱을 처음 열 때). 저축으로 등록한 돈은 지출에 섞이지 않고 ‘모은 돈’에 더해져요.</p>
     <div class="recur-list" id="recur-list"></div>
     <section class="sim-sec">
       <span class="label">새로 등록</span>
-      <div class="seg seg2" role="tablist" aria-label="종류"><button role="tab" type="button" data-rkind="spend" id="rk-spend">지출</button><button role="tab" type="button" data-rkind="save" id="rk-save">저축</button></div>
+      <div class="sim-picks" id="r-presets"></div>
+      <div class="seg seg2" role="tablist" aria-label="종류"><button role="tab" type="button" data-rkind="save" id="rk-save">저축·투자·청약</button><button role="tab" type="button" data-rkind="spend" id="rk-spend">고정비</button></div>
       <div class="sim-in">
-        <label>이름<input class="field" id="r-name" maxlength="20" placeholder="예: 통신비, 넷플릭스"></label>
+        <label>이름<input class="field" id="r-name" maxlength="20" placeholder="예: 청년미래적금, 통신비"></label>
         <label>금액<input class="field" id="r-amount" inputmode="numeric" placeholder="0"></label>
         <label>매달 며칠<input class="field" id="r-day" inputmode="numeric" placeholder="1~31"></label>
         <label id="r-cat-box">항목<select id="r-cat"></select></label>
@@ -2172,6 +2184,7 @@ dialog.sheet { border-radius: 26px 26px 0 0; }
     card.innerHTML = `<span class="ib-ic">${ib}</span><span><b>확인 대기 ${ib}건</b><small>결제 알림으로 들어온 기록을 확인해 주세요</small></span><span class="go">확인하기 ›</span>`;
     $('h-trio').innerHTML = `<div class="tile income"><span>수입</span><b>+${fmt(inc)}</b></div><div class="tile spend"><span>지출</span><b>−${fmt(sp)}</b></div><div class="tile save"><span>저축</span><b>${fmt(sv)}</b></div>`;
     $('h-budget').innerHTML = budgetHTML();
+    renderHomeRecur();
     // 이번 주 (오늘이 있는 주)
     const t = new Date(); t.setHours(0, 0, 0, 0); const start = new Date(t); start.setDate(t.getDate() - t.getDay());
     const days = [...Array(7)].map((_, i) => { const d = new Date(start); d.setDate(start.getDate() + i); return d; });
@@ -2568,7 +2581,7 @@ dialog.sheet { border-radius: 26px 26px 0 0; }
   }
 
   // ── 고정지출·정기결제 ──
-  var rKind = 'spend';
+  var rKind = 'save';
   function runRecurring() {
     const now = new Date(), y = now.getFullYear(), m = now.getMonth(), key = ymKey(y, m), n = daysIn(y, m); let added = 0;
     (state.recurring || []).forEach(r => {
@@ -2584,6 +2597,37 @@ dialog.sheet { border-radius: 26px 26px 0 0; }
   function nextDue(r) { const now = new Date(); now.setHours(0, 0, 0, 0); let d = new Date(now.getFullYear(), now.getMonth(), Math.min(r.day, daysIn(now.getFullYear(), now.getMonth())));
     if (d < now || LEDGER().some(e => e.rid === r.id && e.date.startsWith(ymKey(now.getFullYear(), now.getMonth())))) { const ny = now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear(), nm = (now.getMonth() + 1) % 12; d = new Date(ny, nm, Math.min(r.day, daysIn(ny, nm))); }
     return { d, dd: Math.round((d - now) / 864e5) }; }
+  function RECUR_PRESETS() { return {
+    save: [['청년미래적금', 'youth', 500000], ['적금', 'save', 0], ['주택청약', 'house', 250000], ['ISA 투자', 'isa', 0], ['연금저축', 'pension', 0], ['IRP', 'irp', 0], ['비상금', 'emer', 0], ['파킹통장', 'park', 0]],
+    spend: [['월세·관리비', '월세·관리비'], ['통신비', '통신비'], ['보험', '보험'], ['구독', '구독'], ['교통', '교통'], ['학비', '학비']] }; }
+  function accForType(t) { simParams(); let a = (state.sim.accounts || []).find(x => x.type === t);
+    if (!a) { a = { id: newId(), type: t, bank: '', balance: 0 }; state.sim.accounts.push(a); } return a.id; }
+  function renderRecurPresets() {
+    const box = $('r-presets'); box.innerHTML = '';
+    RECUR_PRESETS()[rKind].forEach(([name, v, amt]) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = name;
+      b.addEventListener('click', () => { $('r-name').value = name; if (amt && !$('r-amount').value) $('r-amount').value = fmt(amt);
+        if (rKind === 'save') { const id = accForType(v); renderRecur(); $('r-acc').value = id; } else { const o = [...$('r-cat').options].find(o => o.value.endsWith('|' + v)); if (o) $('r-cat').value = o.value; }
+        if (!$('r-day').value) $('r-day').focus(); else $('r-amount').focus(); });
+      box.appendChild(b); });
+  }
+  function renderHomeRecur() {
+    const rs = state.recurring || [], box = $('h-recur');
+    const saveT = rs.filter(r => r.kind === 'save').reduce((s, r) => s + r.amount, 0), spendT = rs.filter(r => r.kind !== 'save').reduce((s, r) => s + r.amount, 0);
+    if (!rs.length) { box.innerHTML = `<div class="card-h"><b>매달 자동으로 빠지는 돈</b></div><p class="note" style="margin:0">적금·투자·청약, 통신비·월세처럼 매달 나가는 돈을 등록하면 그날 자동으로 기록돼요.</p><button class="btn" type="button" id="h-recur-add">+ 자동 공제 등록하기</button>`; }
+    else {
+      const items = rs.map(r => Object.assign({ r }, nextDue(r))).sort((a, b) => a.d - b.d);
+      box.innerHTML = `<div class="card-h"><b>매달 자동으로 빠지는 돈</b><button class="link" type="button" id="h-recur-add">관리 ›</button></div>
+        <div class="rc-sum"><div><span>저축·투자</span><b class="sav">${fmt(saveT)}원</b></div><div><span>고정비</span><b>${fmt(spendT)}원</b></div><div><span>합계</span><b>${fmt(saveT + spendT)}원</b></div></div>
+        <div class="rc-list"></div>`;
+      const list = box.querySelector('.rc-list');
+      items.slice(0, 6).forEach(({ r, dd }) => { const [ic, bg] = r.kind === 'save' ? ['🐷', '#E8F7EF'] : CAT_ICON({ type: 'spend', cat: r.cat });
+        const el = document.createElement('div'); el.className = 'rc-row';
+        el.innerHTML = `<span class="tx-ic" style="background:${bg}">${ic}</span><span class="tx-w"><b></b><small>매월 ${r.day}일 · ${r.kind === 'save' ? lgAccName(r.account) : r.cat}</small></span><span class="rc-r"><b>${fmt(r.amount)}원</b><small class="rc-dd2">${dd === 0 ? '오늘' : 'D-' + dd}</small></span>`;
+        el.querySelector('b').textContent = r.name; list.appendChild(el); });
+      if (items.length > 6) list.insertAdjacentHTML('beforeend', `<p class="note" style="margin:6px 0 0">외 ${items.length - 6}건</p>`);
+    }
+    box.querySelector('#h-recur-add').addEventListener('click', () => { renderRecur(); openSheet('sheetRecur'); });
+  }
   function renderRecur() {
     simParams(); const rs = state.recurring || [], spendTot = rs.filter(r => r.kind !== 'save').reduce((s, r) => s + r.amount, 0), saveTot = rs.filter(r => r.kind === 'save').reduce((s, r) => s + r.amount, 0);
     $('recur-top').innerHTML = `<span class="label">매달 나가는 돈</span><div class="hero-num">${fmt(spendTot)}<small>원</small></div><span class="note">1년이면 ${fmt(spendTot * 12)}원${saveTot ? ` · 자동 저축 매달 ${fmt(saveTot)}원` : ''}</span>`;
@@ -2598,6 +2642,7 @@ dialog.sheet { border-radius: 26px 26px 0 0; }
       box.appendChild(el);
     });
     document.querySelectorAll('[data-rkind]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.rkind === rKind)));
+    renderRecurPresets();
     $('r-cat-box').hidden = rKind === 'save'; $('r-acc-box').hidden = rKind !== 'save';
     if (!$('r-cat').options.length) $('r-cat').innerHTML = Object.entries(L_SPEND()).map(([g, o]) => `<optgroup label="${o.name}">${o.cats.map(c => `<option value="${g}|${c}">${c}</option>`).join('')}</optgroup>`).join('');
     const accs = state.sim.accounts || []; $('r-acc').innerHTML = accs.map(a => `<option value="${a.id}"></option>`).join(''); $('r-acc').querySelectorAll('option').forEach((o, i) => o.textContent = lgAccName(accs[i].id));
