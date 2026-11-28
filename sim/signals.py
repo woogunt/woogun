@@ -20,6 +20,36 @@ BOARD = [  # (심볼, 이름, 단위 표시)
 ISA = [("133690.KS", "TIGER 미국나스닥100", 10), ("360750.KS", "TIGER 미국S&P500", 10),
        ("069500.KS", "KODEX 200", 7), ("229200.KS", "KODEX 코스닥150", 3)]
 PICK_BUDGET, PICK_N = 20, 5
+EXIT_RANK, WARN_DROP = 20, 0.15   # 월중 매도: 순위 20위 밖 / 주의: 200일선 아래 또는 매수 후 고점 대비 -15%
+
+def live_book():
+    """이번 달 첫 거래일부터 오늘까지 규칙을 그대로 따라가 현재 보유 종목과 월중 신호를 계산한다.
+    (intramonth.py 백테스트에서 기본보다 나았던 규칙: 순위 20위 밖이면 매도하고, 조건을 맞는 다음 종목으로 교체)"""
+    from intramonth import qualified, ranks, st, ma
+    last = st.index[-1]
+    month = st.index[(st.index.year == last.year) & (st.index.month == last.month)]
+    d0 = month[0]
+    hold = {s: dict(since=str(d0.date()), entry=float(st.at[d0, s]), peak=float(st.at[d0, s])) for s in qualified(d0, set())[:PICK_N]}
+    sold, events = set(), []
+    for t in month[1:]:
+        rk = ranks(t)
+        for s in hold: hold[s]["peak"] = max(hold[s]["peak"], float(st.at[t, s]))
+        for s in [s for s in hold if rk.get(s, 999) > EXIT_RANK]:
+            events.append(dict(date=str(t.date()), kind="sell", sym=s, name=STOCKS[s], why=f"순위 {rk.get(s, '-')}위로 {EXIT_RANK}위 밖"))
+            del hold[s]; sold.add(s)
+        for s in qualified(t, set(hold) | sold)[:PICK_N - len(hold)]:
+            events.append(dict(date=str(t.date()), kind="buy", sym=s, name=STOCKS[s], why=f"빈자리 대체, 순위 {rk.get(s, '-')}위"))
+            hold[s] = dict(since=str(t.date()), entry=float(st.at[t, s]), peak=float(st.at[t, s]))
+    rk = ranks(last); rows = []
+    for s, h in hold.items():
+        p = float(st.at[last, s]); m = float(ma.at[last, s])
+        warn = []
+        if p < m: warn.append("200일선 아래")
+        if p < h["peak"] * (1 - WARN_DROP): warn.append(f"고점 대비 {p / h['peak'] - 1:.0%}")
+        rows.append(dict(sym=s, name=STOCKS[s], market=market_of(s), since=h["since"], chg=p / h["entry"] - 1, rank=rk.get(s), warn=warn))
+    return dict(month_start=str(d0.date()), asof=str(last.date()), hold=rows, events=events,
+                today=[e for e in events if e["date"] == str(last.date())])
+
 
 def board():
     rows = []
@@ -66,10 +96,11 @@ if __name__ == "__main__":
     etf = {sym: dict(name=n, index=i, **trend(px, sym)) for sym, (n, i) in ETFS.items()}
     out = dict(
         generated=dt.datetime.now(dt.timezone.utc).isoformat(), data_until=str(px.index[-1].date()),
-        board=board(), indexes=idx, etfs=etf, top=top, buy=buy3, below=below, picks=chosen,
+        book=live_book(), board=board(), indexes=idx, etfs=etf, top=top, buy=buy3, below=below, picks=chosen,
         isa=[dict(sym=s, name=n, man=m) for s, n, m in ISA], pick_budget=PICK_BUDGET, pick_n=PICK_N,
         rules=dict(buy=f"매달 첫 거래일: ISA에서 지수 ETF 4개를 정해진 금액대로 적립. 일반 계좌에서는 매수 후보 {PICK_N}개를 같은 금액으로 맞춰 보유.",
-                   sell=f"개별 종목은 매달 첫 거래일에 다시 고르고, 후보 {PICK_N}개에서 빠진 종목은 팔아서 새 후보에 넣음.",
+                   sell=f"매달 첫 거래일에 다시 고르고, 월중에는 순위 {EXIT_RANK}위 밖으로 밀리면 매도 신호, 그 빈자리에 조건을 맞는 다음 종목을 매수 신호.",
+                   warn=f"200일선 아래로 마감하거나 매수 후 고점 대비 {WARN_DROP:.0%} 넘게 빠지면 주의 알림만(백테스트상 바로 팔면 손해였음).",
                    index="ISA 지수 ETF는 팔지 않고 계속 적립."),
     )
     (HERE / "signals.json").write_text(json.dumps(out, ensure_ascii=False, indent=1))
@@ -79,4 +110,7 @@ if __name__ == "__main__":
     for s, t in idx.items(): print(f"  {t['name']:<7} 200일선 대비 {t['gap']:+.1%}  52주 고점 대비 {t['from_high']:+.1%}  1개월 {t['r1m']:+.1%}")
     print("모멘텀 상위 10:")
     for r in top: print(f"  {r['rank']:>2}. {r['name']:<12} {r['market']:<3} 12-1개월 {r['mom']:+.0%}  200일선 {r['gap']:+.0%}  최근1개월 {r['r1m']:+.0%}")
-    print("이번 달 매수 후보:", [STOCKS[s] for s in buy3], f"(각 {PICK_BUDGET / PICK_N:g}만원)")
+    b = out["book"]
+    print(f"보유 ({b['month_start']} 매수 기준):", [(h["name"], f"{h['chg']:+.1%}", h["rank"], h["warn"]) for h in b["hold"]])
+    print("이번 달 월중 신호:", [(e["date"], e["kind"], e["name"], e["why"]) for e in b["events"]] or "없음")
+    print("다음 정기 매수 후보:", [STOCKS[s] for s in buy3], f"(각 {PICK_BUDGET / PICK_N:g}만원)")
