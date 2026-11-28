@@ -28,7 +28,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 }
 </script>
 <title>월급 쪼개기</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap">
 <style>
 /* Layout: 왼쪽 설정(달 선택·월급·비율) / 오른쪽 결과(월별 또는 연간), 좁으면 한 줄로 쌓임 */
 :root {
@@ -476,6 +476,101 @@ dialog.sheet::backdrop { background: rgba(10, 20, 16, 0.45); }
 .ph-status { display: flex; flex-direction: column; gap: 6px; }
 .ph-thumbs { display: flex; gap: 8px; flex-wrap: wrap; } .ph-thumbs:empty { display: none; }
 .ph-th { width: 64px; height: 110px; border-radius: 10px; background: var(--soft) center/cover no-repeat; border: 1px solid var(--line); }
+
+/* ══ 새 디자인 (밝고 깔끔한 카드형) ══ */
+:root {
+  --bg: #F2F4F6; --surface: #FFFFFF; --ink: #191F28; --muted: #8B95A1; --line: #EDF0F3; --soft: #F2F4F6;
+  --accent: #3373F0; --accent-ink: #FFFFFF; --warn: #F04452; --ok: #12B76A; --save: #12B76A;
+  --c1: #3373F0; --c2: #3373F0; --c3: #F5A524; --c4: #F04452; --c5: #8B5CF6; --c6: #14B8A6; --c7: #EC6A2C; --c8: #E04F8E;
+  --today: rgba(51, 115, 240, 0.12); --today-ink: #3373F0;
+  --font-body: "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif; --font-num: "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0E0F12; --surface: #1A1C21; --ink: #F2F4F6; --muted: #8B95A1; --line: #262930; --soft: #22252B;
+  --accent: #5B8DF6; --accent-ink: #0E0F12; --warn: #FF6B76; --ok: #34D399; --save: #34D399;
+  --c1: #5B8DF6; --c2: #5B8DF6; --c3: #F7B84B; --c4: #FF6B76; --c5: #A78BFA; --c6: #2DD4BF; --c7: #F58A52; --c8: #F472B6;
+  --today: rgba(91, 141, 246, 0.18); --today-ink: #8FB2FA; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0E0F12; --surface: #1A1C21; --ink: #F2F4F6; --muted: #8B95A1; --line: #262930; --soft: #22252B;
+  --accent: #5B8DF6; --accent-ink: #0E0F12; --warn: #FF6B76; --ok: #34D399; --save: #34D399;
+  --c1: #5B8DF6; --c2: #5B8DF6; --c3: #F7B84B; --c4: #FF6B76; --c5: #A78BFA; --c6: #2DD4BF; --c7: #F58A52; --c8: #F472B6;
+  --today: rgba(91, 141, 246, 0.18); --today-ink: #8FB2FA; color-scheme: dark;
+}
+body { font-family: var(--font-body); letter-spacing: -0.01em; -webkit-font-smoothing: antialiased; }
+.page:not(#pg-more) { gap: 12px; }
+.card, .panel, .sim-sec, .menu-i, .tile, .acc-card, .recur-i, .qa-item, .ib-item { border: 0; border-radius: 22px; box-shadow: none; }
+.card { padding: 20px; }
+.card-h b { font-size: 1.05rem; font-weight: 700; }
+.sec-big { font-size: 1.35rem !important; font-weight: 800 !important; letter-spacing: -0.02em; }
+.app-title { font-size: 1.5rem; font-weight: 800; }
+.topbar .gear, .gear, .ynav { border: 0; background: var(--surface); border-radius: 14px; }
+.mnav-t { font-weight: 800; font-size: 1.15rem; }
+.hero { background: var(--surface); border-radius: 22px; padding: 22px 20px; }
+.hero .label { font-size: 0.85rem; letter-spacing: 0; text-transform: none; }
+.hero-num { font-weight: 800; letter-spacing: -0.035em; font-family: var(--font-body); }
+.label { letter-spacing: 0; }
+.trio { gap: 8px; } .tile { padding: 14px; background: var(--surface); }
+.tile b { font-weight: 800; font-family: var(--font-body); } .tile.save b { color: var(--save); }
+.tile.income b { color: var(--accent); }
+.lg-bar { height: 10px; background: var(--soft); } .lg-bar div { border-radius: 6px; }
+.bud-num { font-weight: 800; font-size: 1.35rem; letter-spacing: -0.02em; }
+/* 주간 */
+.wd span { width: 40px; height: 40px; font-weight: 700; background: var(--soft); }
+.wd.rec span { background: var(--accent); }
+.wd.miss span { border-color: #C9D3E0; }
+.week-miss .chip { background: var(--today); color: var(--accent); border: 0; padding: 8px 14px; border-radius: 999px; }
+/* 거래 내역 */
+.sw-hint { margin: -4px 0 0; font-size: 0.75rem; }
+.tx-day { display: flex; justify-content: space-between; align-items: baseline; padding: 18px 2px 6px; font-size: 0.88rem; color: var(--muted); font-weight: 500; }
+.tx-day:first-child { padding-top: 4px; }
+.sw { position: relative; overflow: hidden; border-radius: 16px; touch-action: pan-y; }
+.sw-act { position: absolute; inset: 0 0 0 auto; width: 148px; display: grid; grid-template-columns: 1fr 1fr; visibility: hidden; }
+.sw.show .sw-act, .sw.open .sw-act { visibility: visible; }
+.sw-act button { border: 0; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 1.15rem; font-weight: 700; }
+.sw-act button span { font-size: 0.78rem; }
+.sw-edit { background: #3373F0; } .sw-del { background: #E5484D; }
+.tx { position: relative; z-index: 1; display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 2px; background: var(--surface); border: 0; cursor: pointer; user-select: none; -webkit-user-select: none; }
+.tx:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.tx-ic { width: 48px; height: 48px; border-radius: 15px; display: grid; place-items: center; font-size: 1.45rem; }
+.tx-w b { font-size: 1rem; font-weight: 700; }
+.tx-w small { font-size: 0.82rem; margin-top: 2px; }
+.tx-a { font-size: 1.02rem; font-weight: 800; font-family: var(--font-body); letter-spacing: -0.02em; }
+.tx.spend .tx-a { color: var(--ink); } .tx.income .tx-a { color: var(--accent); } .tx.save .tx-a { color: var(--save); }
+.tx-list { gap: 0; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tx-ic { filter: saturate(.9) brightness(.9); } }
+/* 달력 */
+.duo b { font-weight: 800; font-family: var(--font-body); } .duo b.inc { color: var(--accent); } .duo b.sav { color: var(--save); }
+.cal-d { border-radius: 14px; }
+.cal-n { font-weight: 600; } .cal-d.today .cal-n { background: var(--accent); }
+.c-sp, .c-in, .c-sv { font-family: var(--font-body); font-weight: 600; } .c-in { color: var(--accent); } .c-sv { color: var(--save); }
+/* 통계 */
+.big-q { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em; }
+.bar-top b { font-weight: 700; }
+/* 자산 */
+.acc-card { border-left: 0; background: var(--surface); padding: 14px 4px; border-radius: 0; border-bottom: 1px solid var(--line); }
+.acc-card:last-child { border-bottom: 0; }
+.acc-ic { border-radius: 15px; width: 44px; height: 44px; background: color-mix(in srgb, var(--ac) 14%, transparent); }
+.acc-v { font-weight: 800; font-family: var(--font-body); }
+/* 아래 탭: 둥근 떠 있는 막대 */
+.tabbar { left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); border: 0; border-radius: 26px; background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 8px 30px rgba(0, 0, 0, .12); padding: 6px; }
+.tabbar button { border-radius: 20px; font-size: 0.72rem; color: var(--muted); padding: 8px 0; }
+.tabbar button[aria-current="page"] { color: var(--ink); background: var(--soft); font-weight: 800; }
+.fab { background: var(--accent); bottom: calc(96px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 8px 22px rgba(51, 115, 240, .35); }
+@media (min-width: 861px) { .tabbar { left: 50%; right: auto; } }
+/* 시트·버튼·입력 */
+dialog.sheet { border-radius: 26px 26px 0 0; }
+.sheet-h { border-bottom: 0; padding: 18px 20px 6px; } .sheet-h b { font-size: 1.2rem; font-weight: 800; }
+.btn { border-radius: 14px; padding: 13px 18px; font-weight: 700; font-size: 0.95rem; }
+.btn.ghost { background: var(--soft); border: 0; }
+.chip { border-radius: 999px; border: 0; background: var(--soft); padding: 8px 13px; font-weight: 600; }
+.chip[aria-pressed="true"], .sim-picks .chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.field, select, .cat input[type=text], .pct, .salary-input { border: 0 !important; background: var(--soft) !important; border-radius: 12px !important; }
+.seg { background: var(--soft); border-radius: 14px; } .seg button { border-radius: 11px; font-weight: 700; }
+.seg button[aria-selected="true"] { box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.photo-drop { border: 0; background: var(--soft); border-radius: 20px; }
+.menu-i { padding: 18px; } .menu-i b { font-weight: 700; }
+.inbox-card { background: var(--today); }
+.panel { padding: 22px; }
 </style>
 
 </head>
@@ -500,7 +595,8 @@ dialog.sheet::backdrop { background: rgba(10, 20, 16, 0.45); }
       <div class="week-miss" id="h-miss"></div>
     </section>
     <section class="card">
-      <div class="card-h"><b>최근 기록</b><button class="link" id="h-to-cal" type="button">달력에서 보기 ›</button></div>
+      <div class="card-h"><b class="sec-big">거래 내역</b><button class="link" id="h-to-cal" type="button">달력으로 보기 ›</button></div>
+      <p class="note sw-hint">왼쪽으로 밀면 수정·삭제할 수 있어요</p>
       <div class="tx-list" id="h-recent"></div>
     </section>
   </div>
@@ -762,7 +858,7 @@ dialog.sheet::backdrop { background: rgba(10, 20, 16, 0.45); }
       <div class="actions"><button class="btn" id="qa-save" type="button" disabled>저장</button></div>
     </div>
     <div id="add-photo" class="stack" style="gap:12px" hidden>
-      <p class="note" style="margin:0">토스·카드사·은행 앱의 <b>결제 내역 화면을 캡처</b>해서 올리면 날짜·가맹점·금액을 읽어서 ‘확인 대기’에 넣어요. 여러 장도 돼요.</p>
+      <p class="note" style="margin:0">토스·카드사·은행 앱의 <b>결제 내역 화면을 캡처</b>해서 올리면 날짜·가맹점·금액을 읽어서 바로 기록해요. 여러 장도 돼요.</p>
       <label class="photo-drop" for="ph-file"><span class="ph-ic">📷</span><b>결제 내역 사진 고르기</b><small>사진 앱에서 캡처한 화면을 골라 주세요</small></label>
       <input type="file" id="ph-file" accept="image/*" multiple hidden>
       <div class="ph-status" id="ph-status" hidden><div class="lg-bar"><div id="ph-bar"></div></div><span class="note" id="ph-msg"></span></div>
@@ -1995,15 +2091,59 @@ dialog.sheet::backdrop { background: rgba(10, 20, 16, 0.45); }
   function daysIn(y, m) { return new Date(y, m + 1, 0).getDate(); }
   function todayStr() { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
   function entryLabel(e) { const SP = L_SPEND(); return e.type === 'save' ? lgAccName(e.account) : e.type === 'spend' ? e.cat || (SP[e.group] || {}).name || '지출' : e.cat || '수입'; }
-  function txRow(e, opts) {
-    const row = document.createElement('button'); row.type = 'button'; row.className = 'tx ' + e.type + (opts && opts.date ? '' : ' nodate');
-    const sign = e.type === 'income' ? '+' : e.type === 'save' ? '→ ' : '−';
-    row.innerHTML = `${opts && opts.date ? `<span class="tx-d">${Number(e.date.slice(5, 7))}/${Number(e.date.slice(8, 10))}</span>` : ''}<span class="tx-ic">${(entryLabel(e) || '?').slice(0, 1)}</span><span class="tx-w"><b></b><small></small></span><span class="tx-a">${sign}${fmt(e.amount)}원</span>`;
-    row.querySelector('.tx-w b').textContent = entryLabel(e) + (e.auto ? ' · 자동' : '');
-    row.querySelector('.tx-w small').textContent = e.memo || (e.type === 'spend' ? (L_SPEND()[e.group] || {}).name || '' : '');
-    row.addEventListener('click', () => openEdit(e));
-    return row;
+  function CAT_ICON(e) { // 항목별 아이콘·색
+    const map = { '식비': ['🍚', '#FFF1E6'], '카페·간식': ['☕️', '#F5EDE6'], '쇼핑': ['🛍️', '#FDEBEF'], '문화·여가': ['🎬', '#EFEBFF'], '의료': ['💊', '#E8F7EF'], '경조사': ['🎁', '#FFF0F3'], '기타': ['💳', '#EEF1F5'],
+      '월세·관리비': ['🏠', '#EAF2FF'], '통신비': ['📱', '#E9F6FB'], '보험': ['🛡️', '#EAF0FF'], '구독': ['📺', '#F1ECFF'], '교통': ['🚌', '#E7F6F1'], '학비': ['📚', '#FFF6E0'], '기타 고정비': ['📌', '#EEF1F5'],
+      '대출 상환': ['🏦', '#EEF1F5'], '카드 할부': ['💳', '#EEF1F5'], '기타 상환': ['🏦', '#EEF1F5'], '월급': ['💰', '#E8F0FF'], '부수입': ['💵', '#E8F7EF'], '용돈': ['🪙', '#FFF6E0'], '기타 수입': ['✨', '#E8F0FF'] };
+    if (e.type === 'save') return ['🐷', '#E8F7EF'];
+    return map[e.cat] || (e.type === 'income' ? ['💰', '#E8F0FF'] : ['💳', '#EEF1F5']);
   }
+  function subLine(e) {
+    const SP = L_SPEND(), parts = [];
+    if (e.type === 'spend') parts.push(e.cat || (SP[e.group] || {}).name || '지출');
+    else if (e.type === 'income') parts.push(e.cat || '수입'); else parts.push('저축');
+    if (e.method) parts.push(e.method); else if (e.auto) parts.push('자동 기록'); else if (e.src === 'photo') parts.push('사진');
+    return parts.join(' · ');
+  }
+  function titleOf(e) { return e.memo || (e.type === 'save' ? lgAccName(e.account) : entryLabel(e)); }
+  var openSwipe = null;
+  function txRow(e) {
+    const wrap = document.createElement('div'); wrap.className = 'sw';
+    wrap.innerHTML = `<div class="sw-act"><button type="button" class="sw-edit">✎<span>수정</span></button><button type="button" class="sw-del">🗑<span>삭제</span></button></div>`;
+    const row = document.createElement('div'); row.className = 'tx ' + e.type; row.setAttribute('role', 'button'); row.tabIndex = 0;
+    const [ic, bg] = CAT_ICON(e), sign = e.type === 'income' ? '+' : e.type === 'save' ? '' : '−';
+    row.innerHTML = `<span class="tx-ic" style="background:${bg}">${ic}</span><span class="tx-w"><b></b><small></small></span><span class="tx-a">${sign}${fmt(e.amount)}원</span>`;
+    row.querySelector('.tx-w b').textContent = titleOf(e);
+    row.querySelector('.tx-w small').textContent = subLine(e);
+    wrap.appendChild(row);
+    // 왼쪽으로 밀기
+    let x0 = 0, y0 = 0, dx = 0, drag = false, moved = false; const W = 148;
+    const set = (v, anim) => { row.style.transition = anim ? 'transform .22s ease' : 'none'; row.style.transform = `translateX(${v}px)`; };
+    const close = () => { set(0, true); wrap.classList.remove('open'); if (openSwipe === wrap) openSwipe = null; setTimeout(() => { if (!wrap.classList.contains('open')) wrap.classList.remove('show'); }, 240); };
+    wrap._close = close;
+    row.addEventListener('pointerdown', ev => { if (ev.button !== undefined && ev.button !== 0) return; drag = true; moved = false; x0 = ev.clientX; y0 = ev.clientY; dx = wrap.classList.contains('open') ? -W : 0; if (openSwipe && openSwipe !== wrap) openSwipe._close(); });
+    row.addEventListener('pointermove', ev => { if (!drag) return; const mx = ev.clientX - x0, my = ev.clientY - y0; if (!moved && Math.abs(mx) < 8) return; if (!moved && Math.abs(my) > Math.abs(mx)) { drag = false; return; } moved = true; wrap.classList.add('show'); row.setPointerCapture && row.setPointerCapture(ev.pointerId); const base = wrap.classList.contains('open') ? -W : 0; set(Math.max(-W - 30, Math.min(0, base + mx))); dx = base + mx; });
+    const end = () => { if (!drag) return; drag = false; if (!moved) return; if (dx < -W / 2) { set(-W, true); wrap.classList.add('open'); openSwipe = wrap; } else close(); };
+    row.addEventListener('pointerup', end); row.addEventListener('pointercancel', end);
+    row.addEventListener('click', () => { if (moved) { moved = false; return; } if (wrap.classList.contains('open')) { close(); return; } openEdit(e); });
+    row.addEventListener('keydown', ev => { if (ev.key === 'Enter') openEdit(e); if (ev.key === 'Delete' || ev.key === 'Backspace') del(); });
+    const del = () => { const all = LEDGER(), i = all.findIndex(x => x.id === e.id); if (i < 0) return; const removed = all.splice(i, 1)[0];
+      if (removed.type === 'income' && removed.cat === '월급') { lgSyncSalary(removed.date); syncSalary(); renderMonths(); }
+      save(); renderResult(); flash('기록을 지웠어요'); };
+    wrap.querySelector('.sw-del').addEventListener('click', del);
+    wrap.querySelector('.sw-edit').addEventListener('click', () => { close(); openEdit(e); });
+    return wrap;
+  }
+  function dayLabel(ds) { const t = todayStr(), y = new Date(Date.now() - 864e5), yd = `${y.getFullYear()}-${pad2(y.getMonth() + 1)}-${pad2(y.getDate())}`, d = new Date(ds + 'T00:00');
+    return ds === t ? '오늘' : ds === yd ? '어제' : `${d.getMonth() + 1}월 ${d.getDate()}일 ${WD[d.getDay()]}요일`; }
+  function txGroups(box, list) { // 날짜별로 묶어서 보여 줌
+    box.innerHTML = ''; const by = {};
+    list.slice().sort((a, b) => b.date.localeCompare(a.date) || (b.at || '').localeCompare(a.at || '') || (b.t || 0) - (a.t || 0)).forEach(e => { (by[e.date] = by[e.date] || []).push(e); });
+    Object.keys(by).forEach(d => { const items = by[d], sp = sumOf(items, isSpend), inc = sumOf(items, isInc);
+      const h = document.createElement('div'); h.className = 'tx-day'; h.innerHTML = `<span>${dayLabel(d)}</span><span>${sp ? '−' + fmt(sp) + '원' : ''}${sp && inc ? ' · ' : ''}${inc ? '+' + fmt(inc) + '원' : ''}</span>`;
+      box.appendChild(h); items.forEach(e => box.appendChild(txRow(e))); });
+  }
+  document.addEventListener('pointerdown', ev => { if (openSwipe && !openSwipe.contains(ev.target)) openSwipe._close(); });
   function planOfMonth() { // 나누는 비율로 정한 이번 달 계획
     const inc = sumOf(entriesOf(state.year, state.month), isInc), S = SAL()[state.month] || inc, rows = compute(S).rows;
     const pick = re => rows.filter(r => re.test(r.name || '')).reduce((s, r) => s + r.amt, 0);
@@ -2048,7 +2188,7 @@ dialog.sheet::backdrop { background: rgba(10, 20, 16, 0.45); }
     $('h-miss').innerHTML = ''; missed.forEach(d => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = `+ ${d.getMonth() + 1}/${d.getDate()} ${WD[d.getDay()]}`; b.addEventListener('click', () => openAdd(ds(d))); $('h-miss').appendChild(b); });
     const rec = list.slice().sort((a, b) => b.date.localeCompare(a.date) || (b.t || 0) - (a.t || 0)).slice(0, 8), box = $('h-recent'); box.innerHTML = '';
     if (!rec.length) box.innerHTML = '<p class="note empty">아직 이번 달 기록이 없어요. 오른쪽 아래 + 를 눌러 월급부터 적어 보세요.</p>';
-    rec.forEach(e => box.appendChild(txRow(e, { date: true })));
+    if (rec.length) txGroups(box, list.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 30));
     const sm = $('syncStatus'); $('syncMirror').textContent = sm ? sm.textContent : ''; $('syncMirror').dataset.s = sm ? sm.dataset.s : '';
   }
 
@@ -2224,7 +2364,7 @@ dialog.sheet::backdrop { background: rgba(10, 20, 16, 0.45); }
     const cancel = /취소/.test(text), income = /입금/.test(text) && !/승인|결제/.test(text);
     let rest = text.replace(/\[[^\]]*\]/g, ' ').replace(/(\d{1,3}(?:,\d{3})+|\d+)\s*원/g, ' ').replace(/\d{1,2}[\/.]\d{1,2}/g, ' ').replace(/\d{1,2}:\d{2}/g, ' ')
       .replace(/누적\S*|잔액\S*|일시불|할부\S*|승인|결제|사용|체크|신용|취소|입금|출금|해외|국내|카드|Web발신|\S*\*\S*/g, ' ');
-    rest = rest.replace(/(\S+?)(에서|에게|으로|로)(?=\s|$)/g, '$1').replace(/토스|토스뱅크|KB국민|국민|신한|삼성|현대|롯데|하나|우리|NH농협|농협|BC|카카오뱅크|카카오페이|네이버페이|페이|완료|되었습니다|됐어요|했어요|알림|[|·:]/g, ' ');
+    rest = rest.replace(/(\S+?)(에서|에게|으로|로)(?=\s|$)/g, '$1').replace(/[|·:]/g, ' ').replace(/(^|\s)(토스뱅크|토스페이|토스|KB국민|KB|국민|신한|삼성|현대|롯데|하나|우리|NH농협|농협|BC|비씨|카카오뱅크|카카오페이|카카오|네이버페이|페이북|완료|되었습니다|됐어요|했어요|알림)(카드)?(?=\s|$)/g, ' ');
     const toks = rest.split(/[\s\n]+/).map(s => s.trim()).filter(s => s.length >= 2 && !/^\d+$/.test(s));
     let merchant = toks.length ? toks[toks.length - 1] : '결제';
     if (toks.length > 1 && /(점|지점|매장|센터)$/.test(merchant)) merchant = toks[toks.length - 2] + ' ' + merchant; // 예: GS25 강남점
@@ -2270,7 +2410,7 @@ dialog.sheet::backdrop { background: rgba(10, 20, 16, 0.45); }
   }
   function addEntries(items, src) {
     const touched = new Set();
-    items.forEach(it => { const e = { id: newId(), t: Date.now(), date: it.date, type: it.type, amount: it.amount, memo: it.memo || '' };
+    items.forEach(it => { const e = { id: newId(), t: Date.now(), date: it.date, type: it.type, amount: it.amount, memo: it.memo || '' }; if (it.at) e.at = it.at; if (it.method) e.method = it.method;
       if (it.type === 'spend') { e.group = it.group; e.cat = it.cat; } else if (it.type === 'income') e.cat = it.cat; else e.account = it.account;
       if (src) e.src = src; LEDGER().push(e); if (e.type === 'income' && e.cat === '월급') touched.add(e.date); });
     touched.forEach(d => lgSyncSalary(d));
@@ -2357,12 +2497,30 @@ dialog.sheet::backdrop { background: rgba(10, 20, 16, 0.45); }
     const dup = it => LEDGER().some(x => x.date === it.date && x.amount === it.amount && x.type === it.type);
     const fresh = items.filter(it => !dup(it)), dupN = items.length - fresh.length;
     if (!fresh.length) { prog(1, items.length ? `찾은 ${items.length}건이 모두 이미 기록돼 있어요.` : '사진에서 거래 내역을 찾지 못했어요. 금액이 잘 보이게 다시 캡처해 주세요.'); return; }
-    state.inbox = (state.inbox || []).concat(fresh.map(it => Object.assign({ id: newId(), src: 'photo', raw: '' }, it)));
-    save(); appRender(); prog(1, `${fresh.length}건을 찾았어요${dupN ? ` (이미 기록된 ${dupN}건 제외)` : ''} · ${how}`);
-    setTimeout(() => { closeSheet('sheetAdd'); st.hidden = true; $('ph-thumbs').innerHTML = ''; openInbox(); }, 700);
+    addEntries(fresh.map(it => Object.assign({ src: 'photo' }, it)), 'photo');
+    prog(1, `${fresh.length}건을 기록했어요${dupN ? ` (이미 있던 ${dupN}건 제외)` : ''} · ${how}`);
+    setTimeout(() => { closeSheet('sheetAdd'); st.hidden = true; $('ph-thumbs').innerHTML = ''; flash(`${fresh.length}건을 기록했어요. 틀린 건 왼쪽으로 밀어서 고치거나 지우세요`); }, 700);
   });
 
   // ── 확인 대기 (결제 알림·주소로 들어온 기록) ──
+  function methodGuess(t) { // 알림 문장에서 결제수단 찾기
+    const m = (t || '').match(/(현대|KB국민|국민|KB|신한|삼성|롯데|하나|우리|NH농협|농협|BC|비씨|씨티|카카오뱅크|카카오페이|카카오|토스뱅크|토스페이|토스|네이버페이|페이북)/);
+    if (!m) return ''; const b = m[1].replace(/^국민$/, 'KB국민').replace(/^KB$/, 'KB국민').replace(/^농협$/, 'NH농협').replace(/^비씨$/, 'BC');
+    if (/페이|뱅크|^토스$|^카카오$|페이북/.test(b)) return b === '카카오' ? '카카오페이' : b;
+    return /체크/.test(t) ? `${b} 체크카드` : `${b}카드`;
+  }
+  function isDupAuto(it, pool) { // 같은 금액·같은 종류가 1분 30초 안에 또 오면 같은 결제로 봄 (카드 앱 + 토스 알림 겹침)
+    return pool.some(e => e.amount === it.amount && e.type === it.type && (it.at && e.at ? Math.abs(Date.parse(e.at) - Date.parse(it.at)) <= 90000 : e.date === it.date && (e.memo || '') === (it.memo || '') && it.src === 'photo'));
+  }
+  function addAuto(text, src, when) { // 바로 기록. 넣은 건수를 돌려줌
+    const at = when ? new Date(when).toISOString() : new Date().toISOString(), d = new Date(at);
+    const date = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+    const items = parseQuick(text, date).filter(it => it.amount > 0);
+    const method = methodGuess(text), fresh = [];
+    items.forEach(it => { Object.assign(it, { at: it.date === date ? at : undefined, method, src }); if (!isDupAuto(it, LEDGER()) && !isDupAuto(it, fresh)) fresh.push(it); });
+    if (fresh.length) addEntries(fresh, src);
+    return fresh.length;
+  }
   function addInbox(text, src, when) {
     const date = when ? (() => { const d = new Date(when); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; })() : todayStr();
     const items = parseQuick(text, date); state.inbox = state.inbox || [];
@@ -2393,7 +2551,7 @@ dialog.sheet::backdrop { background: rgba(10, 20, 16, 0.45); }
   $('inbox-all').addEventListener('click', () => { const ok = (state.inbox || []).filter(it => it.amount > 0); state.inbox = (state.inbox || []).filter(it => !(it.amount > 0)); addEntries(ok, 'inbox'); renderInbox(); flash(`${ok.length}건 기록했어요`); });
   function openInbox() { renderInbox(); openSheet('sheetInbox'); }
   // 단축어가 앱 주소에 ?add=문자내용 을 붙여서 열 때
-  (function importFromUrl() { try { const q = new URLSearchParams(location.search), t = q.get('add'); if (!t) return; const n = addInbox(t, 'url'); save(); history.replaceState(null, '', location.pathname + location.hash); setTimeout(() => { flash(`결제 알림 ${n}건이 확인 대기에 들어왔어요`); openInbox(); }, 300); } catch (e) {} })();
+  (function importFromUrl() { try { const q = new URLSearchParams(location.search), t = q.get('add'); if (!t) return; const n = addAuto(t, 'url'); save(); history.replaceState(null, '', location.pathname + location.hash); setTimeout(() => { flash(n ? `결제 ${n}건을 기록했어요` : '이미 기록된 결제예요'); }, 300); } catch (e) {} })();
   // GitHub 저장소 이슈로 들어온 결제 알림 가져오기 (단축어 → 이슈 → 앱)
   async function ghImportIssues(cfg) {
     try {
@@ -2401,11 +2559,11 @@ dialog.sheet::backdrop { background: rgba(10, 20, 16, 0.45); }
       const list = await r.json(); let n = 0; state.inboxSeen = state.inboxSeen || [];
       for (const it of list) {
         if (it.pull_request) continue;
-        if (!state.inboxSeen.includes(it.number)) { n += addInbox(((it.body || '').trim() || it.title || '').trim(), 'issue', it.created_at); state.inboxSeen.push(it.number); }
+        if (!state.inboxSeen.includes(it.number)) { n += addAuto(((it.body || '').trim() || it.title || '').trim(), 'issue', it.created_at); state.inboxSeen.push(it.number); }
         ghFetch(cfg, '/issues/' + it.number, 'PATCH', { state: 'closed' }).catch(() => {});
       }
       state.inboxSeen = state.inboxSeen.slice(-300); state.ghIssueErr = 0;
-      if (n) { save(); renderResult(); flash(`결제 알림 ${n}건이 확인 대기에 들어왔어요`); }
+      if (n) { save(); renderResult(); flash(`결제 ${n}건을 자동으로 기록했어요`); } else if (list.length) save();
     } catch (e) {}
   }
 
@@ -2471,10 +2629,10 @@ dialog.sheet::backdrop { background: rgba(10, 20, 16, 0.45); }
         <li>완료. 승인 문자가 오면 저장소에 쌓였다가, <b>앱을 열면 ‘확인 대기’로 들어와요</b>. 항목을 보고 저장만 누르면 돼요.</li>
         <li><b>Apple Pay</b>(현대카드 등)도 같은 방법: 자동화 → <b>지갑</b> → 결제(거래) 선택 → 같은 동작, body에 <b>가맹점</b>과 <b>금액</b> 변수를 넣으세요.</li>
       </ol>
-      <section class="sim-sec"><span class="label">문자로 테스트해 보기</span><textarea class="field qa-text" id="auto-test" rows="3" placeholder="토스 알림 예: 스타벅스에서 4,500원 결제했어요&#10;문자 예: [Web발신] 현대카드 승인 홍*동 12,000원 일시불 11/27 14:20 스타벅스"></textarea><div class="note" id="auto-res"></div><div class="actions"><button class="btn ghost" type="button" id="auto-add">확인 대기에 넣기</button></div></section>`;
+      <section class="sim-sec"><span class="label">문자로 테스트해 보기</span><textarea class="field qa-text" id="auto-test" rows="3" placeholder="토스 알림 예: 스타벅스에서 4,500원 결제했어요&#10;문자 예: [Web발신] 현대카드 승인 홍*동 12,000원 일시불 11/27 14:20 스타벅스"></textarea><div class="note" id="auto-res"></div><div class="actions"><button class="btn ghost" type="button" id="auto-add">바로 기록하기</button></div></section>`;
     $('auto-body').querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => { try { navigator.clipboard.writeText(b.dataset.copy).then(() => flash('복사했어요'), () => flash('길게 눌러 복사하세요')); } catch (e) { flash('길게 눌러 복사하세요'); } }));
     $('auto-test').addEventListener('input', e => { const r = parseQuick(e.target.value, todayStr()); $('auto-res').textContent = r.length ? r.map(x => `${x.type === 'income' ? '수입' : x.type === 'save' ? '저축' : '지출'} · ${x.memo || x.cat} · ${fmt(x.amount)}원 · ${x.cat || ''}`).join(' / ') : ''; });
-    $('auto-add').addEventListener('click', () => { const t = $('auto-test').value.trim(); if (!t) return; addInbox(t, 'paste'); save(); appRender(); closeSheet('sheetAuto'); openInbox(); });
+    $('auto-add').addEventListener('click', () => { const t = $('auto-test').value.trim(); if (!t) return; const n = addAuto(t, 'paste'); closeSheet('sheetAuto'); flash(n ? `${n}건을 기록했어요` : '금액을 찾지 못했거나 이미 기록된 결제예요'); });
   }
 
   // ── 연결 ──
