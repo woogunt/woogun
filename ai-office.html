@@ -14,18 +14,20 @@
     --accent: #FF8FA3;
     --sign-wood: #E8B98A;
     --sign-wood-dark: #C98F5E;
+    --bar: #F6F0EA;
+    --soft: #F7F2F8;
     --font-display: "Jua", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
     --font-body: "Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #26222F; --fg: #F3EDF7; --muted: #B3A9C2; --card: #312C3C; --line: #463F55;
-      --accent: #FF9DB0; --sign-wood: #D9A878; --sign-wood-dark: #A9774A; color-scheme: dark;
+      --accent: #FF9DB0; --sign-wood: #D9A878; --sign-wood-dark: #A9774A; --bar: #3A3447; --soft: #3B3548; color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
     --bg: #26222F; --fg: #F3EDF7; --muted: #B3A9C2; --card: #312C3C; --line: #463F55;
-    --accent: #FF9DB0; --sign-wood: #D9A878; --sign-wood-dark: #A9774A; color-scheme: dark;
+    --accent: #FF9DB0; --sign-wood: #D9A878; --sign-wood-dark: #A9774A; --bar: #3A3447; --soft: #3B3548; color-scheme: dark;
   }
 
   body {
@@ -35,19 +37,72 @@
     font-size: 15px;
     line-height: 1.6;
   }
+  /* 맥북(약 1440×820 화면) 기준: 위쪽 띠 = 소개·계획(왼쪽) + 시뮬레이션 창(오른쪽), 아래 = 두 방을 한 줄로 */
   .page {
-    max-width: 1500px;
+    max-width: 1440px;
     margin: 0 auto;
-    padding-block: 28px 48px;
+    padding-block: 20px 24px;
     padding-left: max(16px, env(safe-area-inset-left, 0px));
     padding-right: max(16px, env(safe-area-inset-right, 0px));
   }
-  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; margin-bottom: 18px; }
-  h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(28px, 4vw, 40px); margin: 0; letter-spacing: 0.01em; text-wrap: balance; }
+  .top { display: grid; grid-template-columns: minmax(0, 1fr) 440px; gap: 24px; align-items: start; margin-bottom: 6px; }
+  .intro { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .title-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 18px; }
+  h1 { font-family: var(--font-display); font-weight: 400; font-size: 38px; line-height: 1.2; margin: 0; letter-spacing: 0.01em; text-wrap: balance; }
   h1 span { color: var(--accent); }
   .hint { color: var(--muted); margin: 0; font-size: 14px; }
 
-  .floor-plan { display: flex; flex-wrap: wrap; gap: 28px 24px; align-items: flex-start; }
+  .plan-card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px 18px 16px; max-width: 640px; }
+  .plan-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .plan-head b { font-family: var(--font-display); font-weight: 400; font-size: 18px; }
+  .plan-head span { color: var(--muted); font-size: 13px; }
+  .alloc { display: flex; height: 26px; border-radius: 13px; overflow: hidden; gap: 3px; }
+  .alloc div { display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 13px; color: #3E3550; min-width: 0; }
+  .alloc-legend { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--muted); }
+  .alloc-legend li { display: inline-flex; align-items: center; gap: 6px; }
+  .alloc-legend i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
+
+  /* 시뮬레이션 창 (macOS 창 모양) */
+  .simwin { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 18px 40px -18px rgba(62,53,80,.45), 0 2px 6px rgba(62,53,80,.08); overflow: hidden; }
+  .simwin.flash { animation: flash 1.2s ease-out; }
+  @keyframes flash { 0% { box-shadow: 0 0 0 4px var(--accent), 0 18px 40px -18px rgba(62,53,80,.45); } 100% { box-shadow: 0 18px 40px -18px rgba(62,53,80,.45), 0 2px 6px rgba(62,53,80,.08); } }
+  .titlebar { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--bar); border-bottom: 1px solid var(--line); }
+  .lights { display: flex; gap: 7px; }
+  .lights button { width: 13px; height: 13px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; }
+  .lights .red { background: #FF5F57; } .lights .yellow { background: #FEBC2E; } .lights .green { background: #28C840; }
+  .lights button:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  .wtitle { flex: 1; text-align: center; font-family: var(--font-display); font-size: 14px; margin-right: 47px; }
+  .live { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .live.on { color: #1E9E5A; }
+  .simwin.min .wbody { display: none; }
+  .wbody { padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .when { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px 8px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .when b { color: var(--fg); font-weight: 400; }
+  .slots { display: flex; gap: 5px; }
+  .slots span { width: 62px; text-align: center; font-size: 12px; border-radius: 8px; padding: 2px 0; background: var(--soft); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .slots span.done { background: #D9F4E5; color: #1E7A48; }
+  .slots span.next { outline: 2px dashed var(--accent); outline-offset: -2px; color: var(--fg); }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .stat { background: var(--soft); border-radius: 10px; padding: 7px 8px 6px; min-width: 0; }
+  .stat small { display: block; font-size: 11.5px; color: var(--muted); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stat strong { display: block; font-family: var(--font-display); font-weight: 400; font-size: 20px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .stat em { display: block; font-style: normal; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .stat.good strong { color: #1E9E5A; } .stat.bad strong { color: #D8546E; }
+  .subline { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); margin: 0; }
+  .hist svg { display: block; width: 100%; height: auto; }
+  .history[hidden] { display: none; }
+  .history { margin: 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--muted); display: grid; gap: 2px; font-variant-numeric: tabular-nums; }
+  .wfoot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .wfoot span { font-size: 11.5px; color: var(--muted); }
+  .wfoot span b { color: var(--fg); font-weight: 400; }
+  .wfoot button, .reopen { font: inherit; font-size: 13px; color: #FFFFFF; background: #E2667F; border: 0; border-radius: 999px; padding: 5px 14px; cursor: pointer; white-space: nowrap; }
+  .wfoot button:disabled { opacity: .6; cursor: progress; }
+  .wfoot button:focus-visible, .reopen:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+  .reopen { justify-self: end; }
+
+  .floor-plan { display: flex; flex-wrap: wrap; gap: 20px 24px; align-items: flex-start; }
+  @media (min-width: 1100px) { .floor-plan { flex-wrap: nowrap; } }
+  @media (max-width: 900px) { .top { grid-template-columns: minmax(0, 1fr); } }
   .room { position: relative; flex: var(--grow) 1 var(--basis); min-width: 0; display: flex; flex-direction: column; align-items: center; }
 
   /* 매달린 표지판 */
@@ -123,7 +178,7 @@
   .bubble .order em { display: block; font-style: normal; font-family: var(--font-display); font-size: 13px; color: #E2667F; }
   @keyframes pop { from { transform: translate(-50%, calc(-100% - 4px)) scale(.6); opacity: 0; } }
 
-  .roster { margin-top: 26px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .roster { display: flex; flex-wrap: wrap; gap: 8px; }
   .roster button {
     font: inherit; font-size: 14px; color: var(--fg); background: var(--card); border: 1px solid var(--line);
     border-radius: 999px; padding: 4px 14px 4px 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
@@ -138,12 +193,52 @@
 </style>
 
 <div class="page">
-  <header>
-    <h1>AI 직원 <span>오피스</span></h1>
-    <p class="hint">직원을 누르면 하는 일을 알려 줘요</p>
+  <header class="top">
+    <div class="intro">
+      <div class="title-row">
+        <h1>AI 직원 <span>오피스</span></h1>
+        <p class="hint">직원을 누르면 하는 일과 이번 지시를 알려 줘요</p>
+      </div>
+      <section class="plan-card" aria-label="운용 계획">
+        <div class="plan-head"><b>운용 계획</b><span>목표 연 6% · 주식 60% · 분기마다 비중 점검</span></div>
+        <div class="alloc" aria-hidden="true">
+          <div style="flex:24;background:#A7DCF5">24%</div>
+          <div style="flex:36;background:#FFC9A3">36%</div>
+          <div style="flex:32;background:#CFE9B8">32%</div>
+          <div style="flex:8;background:#E6DEFB">8%</div>
+        </div>
+        <ul class="alloc-legend">
+          <li><i style="--c:#A7DCF5"></i>국내주식 ETF (코스피200) 24%</li>
+          <li><i style="--c:#FFC9A3"></i>미국주식 ETF (S&amp;P500) 36%</li>
+          <li><i style="--c:#CFE9B8"></i>국고채 ETF 32%</li>
+          <li><i style="--c:#E6DEFB"></i>현금 8%</li>
+        </ul>
+      </section>
+      <nav class="roster" id="roster" aria-label="직원 바로 찾기"></nav>
+    </div>
+
+    <aside class="simwin" id="simwin" aria-label="운용 시뮬레이션 창">
+      <div class="titlebar">
+        <div class="lights">
+          <button type="button" class="red" id="sw-close" aria-label="창 닫기" title="닫기"></button>
+          <button type="button" class="yellow" id="sw-min" aria-label="창 접기/펼치기" title="접기"></button>
+          <button type="button" class="green" id="sw-more" aria-label="실행 기록 보기" title="실행 기록"></button>
+        </div>
+        <span class="wtitle">운용 시뮬레이션</span>
+        <span class="live" id="sw-status">준비 중</span>
+      </div>
+      <div class="wbody">
+        <div class="when"><span>마지막 실행 <b id="sw-last">-</b></span><div class="slots" id="sw-slots" aria-label="오늘 자동 실행 시간 (한국 시간)"></div></div>
+        <div class="stats" id="sw-stats"></div>
+        <p class="subline" id="sw-sub"></p>
+        <div class="hist"><svg id="sw-hist" viewBox="0 0 412 74" role="img" aria-label="1년 뒤 수익률 분포: 막대 높이는 경로 수"></svg></div>
+        <ul class="history" id="sw-history" hidden></ul>
+        <div class="wfoot"><span>다음 자동 실행 <b id="sw-next">-</b> · 가정으로 만든 가상 시세 4,000개 경로</span><button type="button" id="sw-run">지금 실행</button></div>
+      </div>
+    </aside>
+    <button type="button" class="reopen" id="sw-reopen" hidden>시뮬레이션 창 열기</button>
   </header>
   <main class="floor-plan" id="plan"></main>
-  <nav class="roster" id="roster" aria-label="직원 바로 찾기"></nav>
 </div>
 
 <script>
@@ -471,4 +566,165 @@ document.addEventListener("keydown", e => {
 });
 window.addEventListener("resize", hide);
 document.querySelectorAll(".stage").forEach(st => st.addEventListener("scroll", hide, { passive: true }));
+
+/* ================= 운용 시뮬레이션 (sim/simulate.py와 같은 가정·규칙) ================= */
+const SLOTS = ["07:30", "10:00", "15:40"];   // 한국 시간 매일 3번 자동 실행
+const STORE = "aiOfficeSimRuns.v1";
+const PLAN = [0.24, 0.36, 0.32, 0.08];      // 국내주식, 미국주식, 국고채, 현금
+const MU = [0.07, 0.07, 0.035, 0.028], VOL = [0.22, 0.17, 0.045, 0];
+const CORR = [[1, .6, -.1, 0], [.6, 1, -.1, 0], [-.1, -.1, 1, 0], [0, 0, 0, 1]];
+const PATHS = 4000, MONTHS = 36, DOF = 5;
+
+function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function cholesky(A) {
+  const n = A.length, L = A.map(r => r.map(() => 0));
+  for (let i = 0; i < n; i++) for (let j = 0; j <= i; j++) {
+    let s = A[i][j]; for (let k = 0; k < j; k++) s -= L[i][k] * L[j][k];
+    L[i][j] = i === j ? Math.sqrt(Math.max(s, 1e-12)) : s / L[j][j];
+  }
+  return L;
+}
+function quantile(sorted, q) { const i = (sorted.length - 1) * q, lo = Math.floor(i); return sorted[lo] + (sorted[Math.min(lo + 1, sorted.length - 1)] - sorted[lo]) * (i - lo); }
+
+function simulate(seed) {
+  const rnd = mulberry32(seed);
+  let spare = null;
+  const gauss = () => { if (spare !== null) { const s = spare; spare = null; return s; } let u = 0; while (u === 0) u = rnd(); const v = rnd(), r = Math.sqrt(-2 * Math.log(u)); spare = r * Math.sin(2 * Math.PI * v); return r * Math.cos(2 * Math.PI * v); };
+  const tScale = Math.sqrt(DOF / (DOF - 2));
+  const tdraw = () => { let c = 0; for (let k = 0; k < DOF; k++) { const g = gauss(); c += g * g; } return gauss() / Math.sqrt(c / DOF) / tScale; };
+  const cov = CORR.map((r, i) => r.map((c, j) => VOL[i] * VOL[j] * c / 12));
+  const L = cholesky(cov), drift = MU.map(m => Math.log1p(m) / 12);
+  const y1 = new Float64Array(PATHS), ann = new Float64Array(PATHS), mdd = new Float64Array(PATHS);
+  const z = [0, 0, 0, 0], r = [0, 0, 0, 0];
+  for (let p = 0; p < PATHS; p++) {
+    let val = 1, peak = 1, dd = 0; const hold = PLAN.slice();
+    for (let m = 0; m < MONTHS; m++) {
+      if (m % 3 === 0) {           // 성호: 분기 점검, 5%p 넘게 틀어지면 리밸런싱
+        let d = 0; for (let a = 0; a < 4; a++) d += Math.abs(hold[a] - PLAN[a]); d /= 2;
+        if (d > 0.05) { for (let a = 0; a < 4; a++) hold[a] = PLAN[a]; val *= 1 - d * 0.003; }
+      }
+      for (let a = 0; a < 4; a++) z[a] = tdraw();
+      let pr = 0, tot = 0;
+      for (let a = 0; a < 4; a++) {
+        let e = drift[a]; for (let k = 0; k <= a; k++) e += L[a][k] * z[k];
+        r[a] = Math.expm1(e); pr += hold[a] * r[a];
+      }
+      val *= 1 + pr;
+      for (let a = 0; a < 4; a++) { hold[a] *= 1 + r[a]; tot += hold[a]; }
+      for (let a = 0; a < 4; a++) hold[a] /= tot;
+      if (val > peak) peak = val; dd = Math.max(dd, 1 - val / peak);
+      if (m === 11) y1[p] = val - 1;
+    }
+    ann[p] = Math.pow(val, 1 / 3) - 1; mdd[p] = dd;
+  }
+  const s1 = Array.from(y1).sort((a, b) => a - b), sa = Array.from(ann).sort((a, b) => a - b), sm = Array.from(mdd).sort((a, b) => a - b);
+  const bins = new Array(15).fill(0);   // -30% ~ +45%, 5% 간격
+  for (const v of s1) bins[Math.max(0, Math.min(14, Math.floor((v + 0.30) / 0.05)))]++;
+  return {
+    med: quantile(s1, .5), p6: s1.filter(v => v >= 0.06).length / PATHS, loss: s1.filter(v => v < 0).length / PATHS,
+    p5: quantile(s1, .05), ann3: quantile(sa, .5), mdd95: quantile(sm, .95), bins,
+  };
+}
+
+/* ---- 한국 시간 계산 ---- */
+const kstFmt = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+function kstParts(ms) { const o = {}; kstFmt.formatToParts(new Date(ms)).forEach(p => o[p.type] = p.value); return o; }
+function slotMs(y, mo, d, hhmm) { const [h, mi] = hhmm.split(":").map(Number); return Date.UTC(y, mo - 1, d, h - 9, mi); }
+function slotsAround(now) {
+  const out = [];
+  for (const off of [-1, 0, 1]) {
+    const p = kstParts(now + off * 86400000);
+    SLOTS.forEach(s => out.push(slotMs(+p.year, +p.month, +p.day, s)));
+  }
+  return out.sort((a, b) => a - b);
+}
+function lastSlot(now) { return slotsAround(now).filter(t => t <= now).pop(); }
+function nextSlot(now) { return slotsAround(now).find(t => t > now); }
+function fmtKst(ms, withDate = true) { const p = kstParts(ms); return (withDate ? `${+p.month}/${+p.day} ` : "") + `${p.hour}:${p.minute}`; }
+
+/* ---- 저장 (이 브라우저에만) ---- */
+function loadRuns() { try { return JSON.parse(localStorage.getItem(STORE)) || []; } catch { return []; } }
+function saveRuns(runs) { try { localStorage.setItem(STORE, JSON.stringify(runs.slice(-12))); } catch {} }
+let runs = loadRuns();
+
+/* ---- 화면 그리기 ---- */
+const $ = id => document.getElementById(id);
+const pct = (v, d = 1) => (v < 0 ? "−" : "") + Math.abs(v * 100).toFixed(d) + "%";
+function renderSlots(now) {
+  const p = kstParts(now), nx = nextSlot(now);
+  $("sw-slots").innerHTML = SLOTS.map(s => {
+    const t = slotMs(+p.year, +p.month, +p.day, s);
+    const cls = t <= now ? "done" : (t === nx ? "next" : "");
+    return `<span class="${cls}">${t <= now ? "✓ " : ""}${s}</span>`;
+  }).join("");
+  $("sw-next").textContent = fmtKst(nx, false) + (kstParts(nx).day !== p.day ? " (내일)" : "");
+}
+function renderRun() {
+  const r = runs[runs.length - 1], prev = runs[runs.length - 2];
+  if (!r) return;
+  $("sw-last").textContent = fmtKst(r.at) + (r.auto ? " 자동" : " 수동");
+  const delta = (k, unit) => prev ? `직전 ${(r[k] - prev[k] >= 0 ? "+" : "−")}${Math.abs((r[k] - prev[k]) * 100).toFixed(1)}%p` : "첫 실행";
+  const tiles = [
+    ["1년 수익 중앙값", pct(r.med), r.med >= 0.06 ? "good" : "", delta("med")],
+    ["6% 이상 확률", pct(r.p6, 0), "", delta("p6")],
+    ["1년 손실 확률", pct(r.loss, 0), "bad", delta("loss")],
+    ["나쁜 5% 경우", pct(r.p5), "bad", delta("p5")],
+  ];
+  $("sw-stats").innerHTML = tiles.map(([k, v, c, d]) => `<div class="stat ${c}"><small>${k}</small><strong>${v}</strong><em>${d}</em></div>`).join("");
+  $("sw-sub").textContent = `3년 유지 시 연평균 ${pct(r.ann3)} · 나쁜 5% 경우 최대 하락 ${pct(-r.mdd95)}`;
+  drawHist(r.bins);
+  $("sw-history").innerHTML = runs.slice().reverse().map(x => `<li>${fmtKst(x.at)} ${x.auto ? "자동" : "수동"} · 중앙 ${pct(x.med)} · 6%↑ ${pct(x.p6, 0)} · 손실 ${pct(x.loss, 0)}</li>`).join("");
+}
+function drawHist(bins) {
+  const W = 412, x0 = 8, x1 = W - 8, top = 14, base = 58, max = Math.max(...bins);
+  const xv = v => x0 + (v + 0.30) / 0.75 * (x1 - x0), bw = (x1 - x0) / 15;
+  let s = "";
+  bins.forEach((c, i) => {
+    const lo = -0.30 + i * 0.05, h = c / max * (base - top);
+    const col = lo + 0.05 <= 0 ? "#F2A0B1" : lo >= 0.05 ? "#8FD6AE" : "#C9BDE8";
+    s += `<rect x="${(x0 + i * bw + 1.5).toFixed(1)}" y="${(base - h).toFixed(1)}" width="${(bw - 3).toFixed(1)}" height="${h.toFixed(1)}" rx="3" fill="${col}"/>`;
+  });
+  s += `<line x1="${x0}" x2="${x1}" y1="${base}" y2="${base}" stroke="var(--line)" stroke-width="1.5"/>`;
+  [[0, "0%"], [0.06, "목표 6%"]].forEach(([v, lab], i) => {
+    const x = xv(v);
+    s += `<line x1="${x}" x2="${x}" y1="${top - 6}" y2="${base}" stroke="${i ? "#1E9E5A" : "var(--muted)"}" stroke-width="1.5" stroke-dasharray="3 3"/>`;
+    s += `<text x="${x + 3}" y="${top - 1}" font-size="10.5" fill="${i ? "#1E9E5A" : "var(--muted)"}" font-family="Gowun Dodum, sans-serif">${lab}</text>`;
+  });
+  [-0.3, -0.15, 0.15, 0.3, 0.45].forEach(v => s += `<text x="${Math.min(xv(v), x1 - 14)}" y="${base + 14}" font-size="10" text-anchor="middle" fill="var(--muted)" font-family="Gowun Dodum, sans-serif">${v > 0 ? "+" : ""}${Math.round(v * 100)}%</text>`);
+  $("sw-hist").innerHTML = s;
+}
+
+let busy = false;
+function runNow(auto, slot) {
+  if (busy) return;
+  busy = true;
+  $("sw-run").disabled = true;
+  $("sw-status").textContent = "실행 중…"; $("sw-status").className = "live on";
+  setTimeout(() => {
+    const at = Date.now();
+    const res = simulate((at ^ 0x5eed) >>> 0);
+    runs.push({ at, slot: slot || null, auto, ...res });
+    runs = runs.slice(-12); saveRuns(runs);
+    renderRun(); renderSlots(Date.now());
+    $("sw-status").textContent = auto ? `${fmtKst(slot, false)} 자동 실행 완료` : "실행 완료";
+    $("sw-status").className = "live on";
+    const w = $("simwin"); w.classList.remove("flash"); void w.offsetWidth; w.classList.add("flash");
+    $("sw-run").disabled = false; busy = false;
+  }, 30);
+}
+function tick() {
+  const now = Date.now(), ls = lastSlot(now), last = runs.filter(r => r.auto).pop();
+  renderSlots(now);
+  if (!last || last.slot < ls) runNow(true, ls);   // 페이지가 닫혀 있던 사이 놓친 회차는 열 때 바로 실행
+}
+
+$("sw-run").addEventListener("click", () => runNow(false));
+$("sw-min").addEventListener("click", () => $("simwin").classList.toggle("min"));
+$("sw-more").addEventListener("click", () => { const h = $("sw-history"); h.hidden = !h.hidden; });
+$("sw-close").addEventListener("click", () => { $("simwin").hidden = true; $("sw-reopen").hidden = false; });
+$("sw-reopen").addEventListener("click", () => { $("simwin").hidden = false; $("sw-reopen").hidden = true; });
+
+renderRun();
+tick();
+setInterval(tick, 20000);
 </script>
