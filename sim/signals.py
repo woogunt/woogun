@@ -16,11 +16,10 @@ BOARD = [  # (심볼, 이름, 단위 표시)
     ("JPYKRW=X", "원/100엔", "원"), ("^TNX", "미국 10년 금리", "%"), ("^VIX", "VIX 공포지수", ""),
     ("GC=F", "금 (온스)", "$"), ("CL=F", "WTI 유가", "$"), ("BTC-USD", "비트코인", "$"),
 ]
-# 공격형 계획 (26세, 매달 20만원)
-PLAN = [
-    ("133690.KS", "나스닥100 ETF", 6), ("360750.KS", "S&P500 ETF", 5), ("069500.KS", "코스피200 ETF", 3),
-    ("229200.KS", "코스닥150 ETF", 1), ("PICKS", "개별 종목 (모멘텀 상위)", 3), ("BOND", "국고채 ETF·현금", 2),
-]
+# 26세 공격형, 매달 50만원 = ISA 30만원(지수 ETF) + 일반 계좌 20만원(개별 종목)
+ISA = [("133690.KS", "TIGER 미국나스닥100", 10), ("360750.KS", "TIGER 미국S&P500", 10),
+       ("069500.KS", "KODEX 200", 7), ("229200.KS", "KODEX 코스닥150", 3)]
+PICK_BUDGET, PICK_N = 20, 5
 
 def board():
     rows = []
@@ -58,20 +57,20 @@ def picks(px, top=10):
     rows.sort(key=lambda r: r["mom"], reverse=True)
     for i, r in enumerate(rows): r["rank"] = i + 1
     ok = [r for r in rows if r["above"]]
-    return rows[:top], [r["sym"] for r in ok[:3]], [r for r in rows if not r["above"]][:5]
+    return rows[:top], [r["sym"] for r in ok[:PICK_N]], [r for r in rows if not r["above"]][:5], ok[:PICK_N]
 
 if __name__ == "__main__":
     px = pd.read_csv(HERE / "data" / "prices.csv", index_col=0, parse_dates=True).ffill(limit=5)
-    top, buy3, below = picks(px)
+    top, buy3, below, chosen = picks(px)
     idx = {sym: dict(name=name, **trend(px, sym)) for sym, name in INDEXES.items()}
     etf = {sym: dict(name=n, index=i, **trend(px, sym)) for sym, (n, i) in ETFS.items()}
     out = dict(
         generated=dt.datetime.now(dt.timezone.utc).isoformat(), data_until=str(px.index[-1].date()),
-        board=board(), indexes=idx, etfs=etf, top=top, buy=buy3, below=below,
-        plan=[dict(sym=s, name=n, man=m) for s, n, m in PLAN],
-        rules=dict(buy="매달 첫 거래일에 계획 금액대로 지수 ETF 적립. 개별 종목 3만원은 '매수 후보 3개' 중 보유 비중이 가장 작은 1개에.",
-                   sell="보유 개별 종목이 순위 10위 밖으로 밀리거나 200일 평균선 아래로 내려가면 다음 거래일에 매도.",
-                   index="지수 ETF는 팔지 않고 적립 유지. 200일선 아래인 지수는 추가 매수 없이 정기 금액만."),
+        board=board(), indexes=idx, etfs=etf, top=top, buy=buy3, below=below, picks=chosen,
+        isa=[dict(sym=s, name=n, man=m) for s, n, m in ISA], pick_budget=PICK_BUDGET, pick_n=PICK_N,
+        rules=dict(buy=f"매달 첫 거래일: ISA에서 지수 ETF 4개를 정해진 금액대로 적립. 일반 계좌에서는 매수 후보 {PICK_N}개를 같은 금액으로 맞춰 보유.",
+                   sell=f"개별 종목은 매달 첫 거래일에 다시 고르고, 후보 {PICK_N}개에서 빠진 종목은 팔아서 새 후보에 넣음.",
+                   index="ISA 지수 ETF는 팔지 않고 계속 적립."),
     )
     (HERE / "signals.json").write_text(json.dumps(out, ensure_ascii=False, indent=1))
     print("데이터 기준일", out["data_until"])
@@ -80,4 +79,4 @@ if __name__ == "__main__":
     for s, t in idx.items(): print(f"  {t['name']:<7} 200일선 대비 {t['gap']:+.1%}  52주 고점 대비 {t['from_high']:+.1%}  1개월 {t['r1m']:+.1%}")
     print("모멘텀 상위 10:")
     for r in top: print(f"  {r['rank']:>2}. {r['name']:<12} {r['market']:<3} 12-1개월 {r['mom']:+.0%}  200일선 {r['gap']:+.0%}  최근1개월 {r['r1m']:+.0%}")
-    print("이번 달 매수 후보:", [STOCKS[s] for s in buy3])
+    print("이번 달 매수 후보:", [STOCKS[s] for s in buy3], f"(각 {PICK_BUDGET / PICK_N:g}만원)")

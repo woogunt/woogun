@@ -27,6 +27,24 @@ def run(K, use_filter=True, cost=0.002):
         out.append((me.index[i + 1], r - turnover * cost * 2)); prev = pick
     return pd.Series(dict(out))
 
+def run_hold(K=5, exit_rank=15, cost=0.002):
+    """보유 규칙: 상위 K개(200일선 위)를 사고, 순위가 exit_rank 밖이거나 200일선 아래로 가면 판다. 빈 자리는 다시 상위 종목으로."""
+    out, hold = [], set()
+    for i in range(13, len(me) - 1):
+        t = me.index[i]
+        sc = mom.loc[t].dropna().sort_values(ascending=False)
+        rank = {s: k + 1 for k, s in enumerate(sc.index)}
+        above = (me.loc[t] > ma_me.loc[t])
+        keep = {s for s in hold if rank.get(s, 999) <= exit_rank and above.get(s, False)}
+        cands = [s for s in sc.index if above.get(s, False) and s not in keep]
+        new = set(cands[:max(0, K - len(keep))])
+        pick = keep | new
+        nxt = mret.iloc[i + 1]
+        r = nxt[list(pick)].mean() if pick else 0.0
+        turnover = (len(hold - pick) + len(new)) / max(2 * K, 1)
+        out.append((me.index[i + 1], r - turnover * cost * 2)); hold = pick
+    return pd.Series(dict(out))
+
 def ew():
     r = mret.iloc[14:].mean(axis=1); return r
 
@@ -42,6 +60,7 @@ if __name__ == "__main__":
     for K in (3, 5, 10):
         stats(run(K), f"모멘텀 상위 {K} + 200일선")
     stats(run(5, False), "모멘텀 상위 5 (필터 없음)")
+    stats(run_hold(5, 15), "상위5 매수, 15위 밖/200일선 아래 매도")
     # 최근 3년만
     r = run(5); stats(r[r.index >= r.index[-1] - pd.DateOffset(years=3)], "  └ 상위5, 최근 3년")
     e = ew(); stats(e[e.index >= e.index[-1] - pd.DateOffset(years=3)], "  └ 전체 같은비중, 최근 3년")

@@ -72,6 +72,7 @@
   .trend { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
   .sig p { margin: 5px 0 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
   .plan-card .alloc { height: 24px; }
+  .acct-note { margin: 8px 0 0; font-size: 12.5px; color: var(--fg); background: var(--soft); border-radius: 8px; padding: 4px 10px; }
   .plan-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 7px; }
   .plan-head b { font-family: var(--font-display); font-weight: 400; font-size: 16px; }
   .plan-head span { color: var(--muted); font-size: 13px; }
@@ -223,12 +224,13 @@
       </div>
       <section class="plan-card" aria-label="운용 계획과 이번 달 신호">
         <div>
-          <div class="plan-head"><b>공격형 계획</b><span>매달 20만원 · 주식 90%</span></div>
+          <div class="plan-head"><b>ISA 지수 적립</b><span>매달 30만원 · 팔지 않고 계속</span></div>
           <div class="alloc" id="alloc" aria-hidden="true"></div>
           <ul class="alloc-legend" id="alloc-legend"></ul>
+          <p class="acct-note">개별 종목은 일반 계좌에서 매달 20만원 (오른쪽 후보 5개 × 4만원)</p>
         </div>
         <div class="sig">
-          <h3>이번 달 신호<span id="sig-date"></span></h3>
+          <h3>개별 종목 매수 후보<span id="sig-date"></span></h3>
           <div class="buys" id="sig-buys"></div>
           <div class="trend" id="sig-trend"></div>
           <p id="sig-rule"></p>
@@ -261,11 +263,11 @@
 </div>
 
 <script type="application/json" id="market-data">
-<!--MARKET-DATA-->{"generated":"2026-11-28T00:10:04.080784+00:00","data_until":"2026-11-27","board":[{"sym":"^KS11","name":"코스피","unit":"","price":4915.68,"chg":204.46665899942582,"pct":0.043400000000000105,"time":"2026-11-27T11:05:40+00:00"},{"sym":"^KQ11","name":"코스닥","unit":"","price":708.99,"chg":53.28276954664,"pct":0.08125999999999989,"time":"2026-11-27T11:05:40+00:00"},{"sym":"^IXIC","name":"나스닥","unit":"","price":24129.5,"chg":543.6537559259086,"pct":0.023050000000000015,"time":"2026-11-27T19:15:59+00:00"},{"sym":"^GSPC","name":"S&P500","unit":"","price":7297.49,"chg":114.70901237241287,"pct":0.01597000000000004,"time":"2026-11-27T18:38:39+00:00"},{"sym":"^DJI","name":"다우","unit":"","price":50774.94,"chg":592.156841272983,"pct":0.011800000000000033,"time":"2026-11-27T18:38:45+00:00"},{"sym":"^SOX","name":"필라델피아 반도체","unit":"","price":9186.706,"chg":411.8060544448999,"pct":0.046929999999999916,"time":"2026-11-27T19:15:59+00:00"},{"sym":"KRW=X","name":"원/달러 환율","unit":"원","price":1333.0,"chg":-10.059515773140902,"pct":-0.007490000000000108,"time":"2026-11-27T22:09:01+00:00"},{"sym":"JPYKRW=X","name":"원/100엔","unit":"원","price":833.3000000000001,"chg":-7.999920948297358,"pct":-0.00950899999999999,"time":"2026-11-27T22:26:46+00:00"},{"sym":"^TNX","name":"미국 10년 금리","unit":"%","price":4.936,"chg":0.08799135687275861,"pct":0.01814999999999989,"time":"2026-11-27T19:59:54+00:00"},{"sym":"^VIX","name":"VIX 공포지수","unit":"","price":23.81,"chg":-2.9900855441621736,"pct":-0.11157000000000006,"time":"2026-11-27T18:15:00+00:00"},{"sym":"GC=F","name":"금 (온스)","unit":"$","price":3668.5,"chg":103.90786085604623,"pct":0.02915000000000001,"time":"2026-11-27T19:44:58+00:00"},{"sym":"CL=F","name":"WTI 유가","unit":"$","price":83.08,"chg":-0.5999854960063686,"pct":-0.00717000000000001,"time":"2026-11-27T19:44:59+00:00"},{"sym":"BTC-USD","name":"비트코인","unit":"$","price":59924.42,"chg":-687.9504040863758,"pct":-0.011349999999999971,"time":"2026-11-28T00:10:05+00:00"}],"indexes":{"^KS11":{"name":"코스피","price":4915.68,"ma200":6599.843976171875,"gap":-0.2551823925311556,"from_high":-0.4606776960643819,"r1m":-0.17211833101870277,"r3m":-0.2808917551053528,"above":false},"^KQ11":{"name":"코스닥","price":708.99,"ma200":932.4953012573242,"gap":-0.2396851769182774,"from_high":-0.4217896483845929,"r1m":-0.058733695705020406,"r3m":-0.1366940639269406,"above":false},"^IXIC":{"name":"나스닥","price":24129.5,"ma200":25228.782392578127,"gap":-0.043572550409785804,"from_high":-0.12573607191857505,"r1m":-0.07848931162667394,"r3m":-0.07548992066351157,"above":false},"^GSPC":{"name":"S&P500","price":7297.490234375,"ma200":7365.333662109375,"gap":-0.009211181848202243,"from_high":-0.066689422936834,"r1m":-0.05477701189379103,"r3m":-0.043763517522368844,"above":false}},"etfs":{"133690.KS":{"name":"TIGER 미국나스닥100","index":"나스닥","price":158625.0,"ma200":178735.945078125,"gap":-0.11251763079516297,"from_high":-0.2345177020420477,"r1m":-0.09071367153912291,"r3m":-0.11165293981448665,"above":false},"360750.KS":{"name":"TIGER 미국S&P500","index":"S&P500","price":24265.0,"ma200":26120.6309765625,"gap":-0.07104081743766144,"from_high":-0.15559294072740504,"r1m":-0.05122189638318675,"r3m":-0.06884063700915666,"above":false},"069500.KS":{"name":"KODEX 200","index":"코스피","price":76705.0,"ma200":103165.391328125,"gap":-0.2564851544445347,"from_high":-0.48116738606385623,"r1m":-0.18800613984015246,"r3m":-0.2879990746679846,"above":false},"229200.KS":{"name":"KODEX 코스닥150","index":"코스닥","price":11925.0,"ma200":15909.3676953125,"gap":-0.2504416122387092,"from_high":-0.4340579121078664,"r1m":-0.04024144869215296,"r3m":-0.14516129032258063,"above":false}},"top":[{"sym":"000660.KS","name":"SK하이닉스","market":"코스피","mom":1.8114028199644072,"gap":-0.28173332691075126,"r1m":-0.25852502089782103,"above":false,"rank":1},{"sym":"AMD","name":"AMD","market":"미국","mom":1.5986143952746685,"gap":-0.03447133650982925,"r1m":-0.2504854677553615,"above":false,"rank":2},{"sym":"005930.KS","name":"삼성전자","market":"코스피","mom":1.1948553495275362,"gap":-0.2640671782983478,"r1m":-0.22801724137931034,"above":false,"rank":3},{"sym":"006400.KS","name":"삼성SDI","market":"코스피","mom":0.7495934959349593,"gap":-0.10459427237153895,"r1m":-0.15892193308550184,"above":false,"rank":4},{"sym":"XOM","name":"엑슨모빌","market":"미국","mom":0.6043152781684751,"gap":0.032348309528974495,"r1m":-0.12056825522594139,"above":true,"rank":5},{"sym":"LLY","name":"일라이릴리","market":"미국","mom":0.366250528919128,"gap":0.237197279364463,"r1m":0.014828407494499318,"above":true,"rank":6},{"sym":"028260.KS","name":"삼성물산","market":"코스피","mom":0.34143724530574704,"gap":-0.25349473987606286,"r1m":-0.19938176197836166,"above":false,"rank":7},{"sym":"AAPL","name":"애플","market":"미국","mom":0.25496718350215763,"gap":0.17344824235946965,"r1m":0.028381001615576773,"above":true,"rank":8},{"sym":"V","name":"비자","market":"미국","mom":0.24684602569756064,"gap":0.22449815825483999,"r1m":0.04826597516182951,"above":true,"rank":9},{"sym":"105560.KS","name":"KB금융","market":"코스피","mom":0.2283744997108077,"gap":-0.08801079582944393,"r1m":-0.06813340594127215,"above":false,"rank":10}],"buy":["XOM","LLY","AAPL"],"below":[{"sym":"000660.KS","name":"SK하이닉스","market":"코스피","mom":1.8114028199644072,"gap":-0.28173332691075126,"r1m":-0.25852502089782103,"above":false,"rank":1},{"sym":"AMD","name":"AMD","market":"미국","mom":1.5986143952746685,"gap":-0.03447133650982925,"r1m":-0.2504854677553615,"above":false,"rank":2},{"sym":"005930.KS","name":"삼성전자","market":"코스피","mom":1.1948553495275362,"gap":-0.2640671782983478,"r1m":-0.22801724137931034,"above":false,"rank":3},{"sym":"006400.KS","name":"삼성SDI","market":"코스피","mom":0.7495934959349593,"gap":-0.10459427237153895,"r1m":-0.15892193308550184,"above":false,"rank":4},{"sym":"028260.KS","name":"삼성물산","market":"코스피","mom":0.34143724530574704,"gap":-0.25349473987606286,"r1m":-0.19938176197836166,"above":false,"rank":7}],"plan":[{"sym":"133690.KS","name":"나스닥100 ETF","man":6},{"sym":"360750.KS","name":"S&P500 ETF","man":5},{"sym":"069500.KS","name":"코스피200 ETF","man":3},{"sym":"229200.KS","name":"코스닥150 ETF","man":1},{"sym":"PICKS","name":"개별 종목 (모멘텀 상위)","man":3},{"sym":"BOND","name":"국고채 ETF·현금","man":2}],"rules":{"buy":"매달 첫 거래일에 계획 금액대로 지수 ETF 적립. 개별 종목 3만원은 '매수 후보 3개' 중 보유 비중이 가장 작은 1개에.","sell":"보유 개별 종목이 순위 10위 밖으로 밀리거나 200일 평균선 아래로 내려가면 다음 거래일에 매도.","index":"지수 ETF는 팔지 않고 적립 유지. 200일선 아래인 지수는 추가 매수 없이 정기 금액만."}}<!--/MARKET-DATA-->
+<!--MARKET-DATA-->{"generated":"2026-11-28T00:26:40.930451+00:00","data_until":"2026-11-27","board":[{"sym":"^KS11","name":"코스피","unit":"","price":4915.68,"chg":204.46665899942582,"pct":0.043400000000000105,"time":"2026-11-27T11:05:40+00:00"},{"sym":"^KQ11","name":"코스닥","unit":"","price":708.99,"chg":53.28276954664,"pct":0.08125999999999989,"time":"2026-11-27T11:05:40+00:00"},{"sym":"^IXIC","name":"나스닥","unit":"","price":24129.5,"chg":543.6537559259086,"pct":0.023050000000000015,"time":"2026-11-27T19:15:59+00:00"},{"sym":"^GSPC","name":"S&P500","unit":"","price":7297.49,"chg":114.70901237241287,"pct":0.01597000000000004,"time":"2026-11-27T18:38:39+00:00"},{"sym":"^DJI","name":"다우","unit":"","price":50774.94,"chg":592.156841272983,"pct":0.011800000000000033,"time":"2026-11-27T18:38:45+00:00"},{"sym":"^SOX","name":"필라델피아 반도체","unit":"","price":9186.706,"chg":411.8060544448999,"pct":0.046929999999999916,"time":"2026-11-27T19:15:59+00:00"},{"sym":"KRW=X","name":"원/달러 환율","unit":"원","price":1333.0,"chg":-10.059515773140902,"pct":-0.007490000000000108,"time":"2026-11-27T22:09:01+00:00"},{"sym":"JPYKRW=X","name":"원/100엔","unit":"원","price":833.3000000000001,"chg":-7.999920948297358,"pct":-0.00950899999999999,"time":"2026-11-27T22:26:46+00:00"},{"sym":"^TNX","name":"미국 10년 금리","unit":"%","price":4.936,"chg":0.08799135687275861,"pct":0.01814999999999989,"time":"2026-11-27T19:59:54+00:00"},{"sym":"^VIX","name":"VIX 공포지수","unit":"","price":23.81,"chg":-2.9900855441621736,"pct":-0.11157000000000006,"time":"2026-11-27T18:15:00+00:00"},{"sym":"GC=F","name":"금 (온스)","unit":"$","price":3668.5,"chg":103.90786085604623,"pct":0.02915000000000001,"time":"2026-11-27T19:44:58+00:00"},{"sym":"CL=F","name":"WTI 유가","unit":"$","price":83.08,"chg":-0.5999854960063686,"pct":-0.00717000000000001,"time":"2026-11-27T19:44:59+00:00"},{"sym":"BTC-USD","name":"비트코인","unit":"$","price":59892.55,"chg":-720.0780208881479,"pct":-0.01187999999999989,"time":"2026-11-28T00:26:42+00:00"}],"indexes":{"^KS11":{"name":"코스피","price":4915.68,"ma200":6599.843976171875,"gap":-0.2551823925311556,"from_high":-0.4606776960643819,"r1m":-0.17211833101870277,"r3m":-0.2808917551053528,"above":false},"^KQ11":{"name":"코스닥","price":708.99,"ma200":932.4953012573242,"gap":-0.2396851769182774,"from_high":-0.4217896483845929,"r1m":-0.058733695705020406,"r3m":-0.1366940639269406,"above":false},"^IXIC":{"name":"나스닥","price":24129.5,"ma200":25228.782392578127,"gap":-0.043572550409785804,"from_high":-0.12573607191857505,"r1m":-0.07848931162667394,"r3m":-0.07548992066351157,"above":false},"^GSPC":{"name":"S&P500","price":7297.490234375,"ma200":7365.333662109375,"gap":-0.009211181848202243,"from_high":-0.066689422936834,"r1m":-0.05477701189379103,"r3m":-0.043763517522368844,"above":false}},"etfs":{"133690.KS":{"name":"TIGER 미국나스닥100","index":"나스닥","price":158625.0,"ma200":178735.945078125,"gap":-0.11251763079516297,"from_high":-0.2345177020420477,"r1m":-0.09071367153912291,"r3m":-0.11165293981448665,"above":false},"360750.KS":{"name":"TIGER 미국S&P500","index":"S&P500","price":24265.0,"ma200":26120.6309765625,"gap":-0.07104081743766144,"from_high":-0.15559294072740504,"r1m":-0.05122189638318675,"r3m":-0.06884063700915666,"above":false},"069500.KS":{"name":"KODEX 200","index":"코스피","price":76705.0,"ma200":103165.391328125,"gap":-0.2564851544445347,"from_high":-0.48116738606385623,"r1m":-0.18800613984015246,"r3m":-0.2879990746679846,"above":false},"229200.KS":{"name":"KODEX 코스닥150","index":"코스닥","price":11925.0,"ma200":15909.3676953125,"gap":-0.2504416122387092,"from_high":-0.4340579121078664,"r1m":-0.04024144869215296,"r3m":-0.14516129032258063,"above":false}},"top":[{"sym":"000660.KS","name":"SK하이닉스","market":"코스피","mom":1.8114028199644072,"gap":-0.28173332691075126,"r1m":-0.25852502089782103,"above":false,"rank":1},{"sym":"AMD","name":"AMD","market":"미국","mom":1.5986143952746685,"gap":-0.03447133650982925,"r1m":-0.2504854677553615,"above":false,"rank":2},{"sym":"005930.KS","name":"삼성전자","market":"코스피","mom":1.1948553495275362,"gap":-0.2640671782983478,"r1m":-0.22801724137931034,"above":false,"rank":3},{"sym":"006400.KS","name":"삼성SDI","market":"코스피","mom":0.7495934959349593,"gap":-0.10459427237153895,"r1m":-0.15892193308550184,"above":false,"rank":4},{"sym":"XOM","name":"엑슨모빌","market":"미국","mom":0.6043152781684751,"gap":0.032348309528974495,"r1m":-0.12056825522594139,"above":true,"rank":5},{"sym":"LLY","name":"일라이릴리","market":"미국","mom":0.366250528919128,"gap":0.237197279364463,"r1m":0.014828407494499318,"above":true,"rank":6},{"sym":"028260.KS","name":"삼성물산","market":"코스피","mom":0.34143724530574704,"gap":-0.25349473987606286,"r1m":-0.19938176197836166,"above":false,"rank":7},{"sym":"AAPL","name":"애플","market":"미국","mom":0.25496718350215763,"gap":0.17344824235946965,"r1m":0.028381001615576773,"above":true,"rank":8},{"sym":"V","name":"비자","market":"미국","mom":0.24684602569756064,"gap":0.22449815825483999,"r1m":0.04826597516182951,"above":true,"rank":9},{"sym":"105560.KS","name":"KB금융","market":"코스피","mom":0.2283744997108077,"gap":-0.08801079582944393,"r1m":-0.06813340594127215,"above":false,"rank":10}],"buy":["XOM","LLY","AAPL","V","COST"],"below":[{"sym":"000660.KS","name":"SK하이닉스","market":"코스피","mom":1.8114028199644072,"gap":-0.28173332691075126,"r1m":-0.25852502089782103,"above":false,"rank":1},{"sym":"AMD","name":"AMD","market":"미국","mom":1.5986143952746685,"gap":-0.03447133650982925,"r1m":-0.2504854677553615,"above":false,"rank":2},{"sym":"005930.KS","name":"삼성전자","market":"코스피","mom":1.1948553495275362,"gap":-0.2640671782983478,"r1m":-0.22801724137931034,"above":false,"rank":3},{"sym":"006400.KS","name":"삼성SDI","market":"코스피","mom":0.7495934959349593,"gap":-0.10459427237153895,"r1m":-0.15892193308550184,"above":false,"rank":4},{"sym":"028260.KS","name":"삼성물산","market":"코스피","mom":0.34143724530574704,"gap":-0.25349473987606286,"r1m":-0.19938176197836166,"above":false,"rank":7}],"picks":[{"sym":"XOM","name":"엑슨모빌","market":"미국","mom":0.6043152781684751,"gap":0.032348309528974495,"r1m":-0.12056825522594139,"above":true,"rank":5},{"sym":"LLY","name":"일라이릴리","market":"미국","mom":0.366250528919128,"gap":0.237197279364463,"r1m":0.014828407494499318,"above":true,"rank":6},{"sym":"AAPL","name":"애플","market":"미국","mom":0.25496718350215763,"gap":0.17344824235946965,"r1m":0.028381001615576773,"above":true,"rank":8},{"sym":"V","name":"비자","market":"미국","mom":0.24684602569756064,"gap":0.22449815825483999,"r1m":0.04826597516182951,"above":true,"rank":9},{"sym":"COST","name":"코스트코","market":"미국","mom":0.11825043340767682,"gap":0.15311369177595013,"r1m":0.13476643136684863,"above":true,"rank":13}],"isa":[{"sym":"133690.KS","name":"TIGER 미국나스닥100","man":10},{"sym":"360750.KS","name":"TIGER 미국S&P500","man":10},{"sym":"069500.KS","name":"KODEX 200","man":7},{"sym":"229200.KS","name":"KODEX 코스닥150","man":3}],"pick_budget":20,"pick_n":5,"rules":{"buy":"매달 첫 거래일: ISA에서 지수 ETF 4개를 정해진 금액대로 적립. 일반 계좌에서는 매수 후보 5개를 같은 금액으로 맞춰 보유.","sell":"개별 종목은 매달 첫 거래일에 다시 고르고, 후보 5개에서 빠진 종목은 팔아서 새 후보에 넣음.","index":"ISA 지수 ETF는 팔지 않고 계속 적립."}}<!--/MARKET-DATA-->
 </script>
 <script>
 const MARKET = (() => { try { return JSON.parse(document.getElementById("market-data").textContent.replace(/<!--\/?MARKET-DATA-->/g, "")); } catch { return {}; } })();
-const BUY_NAMES = (MARKET.top || []).filter(r => (MARKET.buy || []).includes(r.sym)).map(r => r.name).join(", ") || "후보 계산 중";
+const BUY_NAMES = (MARKET.picks || []).map(r => r.name).join(", ") || "후보 계산 중";
 const TEAMS = [
   {
     id: "trading", name: "트레이딩 팀", dot: "#5CC9A0",
@@ -274,10 +276,10 @@ const TEAMS = [
     members: [
       { name: "호길", role: "주식 트레이더", shirt: "#7EB6F2", hair: "short", hairColor: "#3B2B24",
         duty: "장이 열리면 주문을 넣고, 보유 종목의 손절·익절 라인을 지키며 포지션을 관리해요.",
-        order: `매달 첫 거래일 10시에 코스피200 ETF 3만원, 코스닥150 ETF 1만원어치 적립. 지수가 200일선 아래면 정기 금액만.` },
+        order: `ISA 담당. 매달 첫 거래일 10시에 나스닥100 10만, S&P500 10만, 코스피200 7만, 코스닥150 3만원 적립. 팔지 않음.` },
       { name: "대길", role: "주식 트레이더", shirt: "#FFB570", hair: "spiky", hairColor: "#2C2430",
         duty: "분석 팀의 매수·매도 신호를 받아 실제 주문으로 옮기고, 체결 내역을 매일 정리해요.",
-        order: `매달 첫 거래일에 나스닥100 ETF 6만원, S&P500 ETF 5만원 적립(국내 상장, 환전 없음). 개별 종목 3만원은 소수점 매수.` },
+        order: `일반 계좌 담당. 매달 첫 거래일에 후보 5개(${BUY_NAMES})를 4만원씩 맞추고, 빠진 종목은 매도. 미국 주식은 소수점 매수.` },
     ],
   },
   {
@@ -290,10 +292,10 @@ const TEAMS = [
         order: `하루 3번 지수·환율·금리를 확인하고, 각 지수가 200일 평균선 위인지 아래인지 보고.` },
       { name: "성호", role: "매수·매도 판단", shirt: "#F79AB8", hair: "curly", hairColor: "#33262A",
         duty: "전망 리포트와 차트를 보고 지금 살지, 팔지, 기다릴지를 결정해요.",
-        order: `개별 종목이 순위 10위 밖으로 밀리거나 200일선 아래로 내려가면 매도 지시. 지수 ETF는 팔지 않음.` },
+        order: `매달 첫 거래일에 개별 종목 후보를 다시 확정. 후보 5개에서 빠진 종목은 매도 지시. ISA 지수 ETF는 팔지 않음.` },
       { name: "미나", role: "매수·매도 추천", shirt: "#FFD86E", hair: "bob", hairColor: "#5A3A2C",
         duty: "판단 결과를 쉬운 말로 정리해 추천 종목과 이유를 트레이딩 팀에 전달해요.",
-        order: `이번 달 개별 종목 매수 후보: ${BUY_NAMES}. 12개월 상승률 상위이면서 200일선 위인 종목.` },
+        order: `이번 달 개별 종목 후보: ${BUY_NAMES}. 12개월 상승률 상위이면서 200일선 위인 5개. 바뀌면 알림으로 전달.` },
     ],
   },
 ];
@@ -593,7 +595,7 @@ document.querySelectorAll(".stage").forEach(st => st.addEventListener("scroll", 
 
 
 /* ================= 시장 정보 · 이번 달 신호 ================= */
-const ALLOC_COLORS = ["#C9B8F5", "#FFC9A3", "#A7DCF5", "#B9E6F0", "#FFB3C1", "#CFE9B8"];
+const ALLOC_COLORS = ["#C9B8F5", "#FFC9A3", "#A7DCF5", "#B9E6F0"];
 function fmtNum(b) {
   const v = b.price, d = b.unit === "%" ? 2 : v >= 1000 ? 2 : 2;
   const n = v.toLocaleString("ko-KR", { minimumFractionDigits: b.sym === "BTC-USD" ? 0 : d, maximumFractionDigits: b.sym === "BTC-USD" ? 0 : d });
@@ -611,30 +613,32 @@ function renderMarket() {
     }).join("");
     document.getElementById("board-note").textContent = `전일 종가 대비 · 오르면 빨강, 내리면 파랑 · ${MARKET.generated ? "갱신 " + fmtKst(Date.parse(MARKET.generated)) + " · " : ""}자료 Yahoo Finance, 실시간 아님`;
   }
-  const plan = MARKET.plan || [];
+  const plan = MARKET.isa || [];
   const total = plan.reduce((a, p) => a + p.man, 0) || 1;
   document.getElementById("alloc").innerHTML = plan.map((p, i) => `<div style="flex:${p.man};background:${ALLOC_COLORS[i]}">${p.man}만</div>`).join("");
   document.getElementById("alloc-legend").innerHTML = plan.map((p, i) => `<li><i style="--c:${ALLOC_COLORS[i]}"></i>${p.name} ${p.man}만</li>`).join("");
   document.getElementById("sig-date").textContent = MARKET.data_until ? `${MARKET.data_until} 종가 기준` : "";
-  document.getElementById("sig-buys").innerHTML = (MARKET.top || []).filter(r => (MARKET.buy || []).includes(r.sym))
-    .map(r => `<b title="12개월 상승률 ${(r.mom * 100).toFixed(0)}%, 200일선 대비 ${(r.gap * 100).toFixed(0)}%">${r.name} · ${r.market}</b>`).join("") || `<span class="flat">후보 없음</span>`;
+  const each = MARKET.pick_budget && MARKET.pick_n ? MARKET.pick_budget / MARKET.pick_n : 0;
+  document.getElementById("sig-buys").innerHTML = (MARKET.picks || [])
+    .map(r => `<b title="순위 ${r.rank}위 · 12개월 상승률 ${(r.mom * 100).toFixed(0)}% · 200일선 대비 +${(r.gap * 100).toFixed(0)}%">${r.name} ${each}만</b>`).join("") || `<span class="flat">후보 없음</span>`;
   document.getElementById("sig-trend").innerHTML = Object.values(MARKET.indexes || {}).map(t => {
     const cls = t.gap >= 0 ? "up" : "down";
     return `<span>${t.name} <span class="${cls}">200일선 ${t.gap >= 0 ? "위" : "아래"} ${t.gap >= 0 ? "+" : "−"}${Math.abs(t.gap * 100).toFixed(1)}%</span></span>`;
   }).join("");
-  document.getElementById("sig-rule").textContent = MARKET.rules ? "매도: " + MARKET.rules.sell : "";
+  document.getElementById("sig-rule").textContent = MARKET.rules ? "매도: " + MARKET.rules.sell + " 지수는 위 200일선 표시 참고." : "";
 }
 
 /* ================= 운용 시뮬레이션 (sim/simulate.py와 같은 가정·규칙) ================= */
 const SLOTS = ["07:23", "09:53", "15:47"];   // 한국 시간 매일 3번 (예약 작업이 시장 정보를 갱신하는 시각과 같음)
-const STORE = "aiOfficeSimRuns.v3";
-const PLAN = [0.275, 0.625, 0.10, 0];      // 공격형: 국내주식, 미국주식, 국고채·현금, (현금)
-const MU = [0.07, 0.07, 0.035, 0.028], VOL = [0.22, 0.17, 0.045, 0];
-const CORR = [[1, .6, -.1, 0], [.6, 1, -.1, 0], [-.1, -.1, 1, 0], [0, 0, 0, 1]];
-const PATHS = 4000, MONTHS = 36, DOF = 5, MONTHLY = 20;   // 매달 20만원, 3년
-const PAID3 = MONTHLY * MONTHS;                              // 넣는 돈 720만원
+const STORE = "aiOfficeSimRuns.v4";
+const PLAN = [0.20, 0.40, 0.40, 0];        // 매달 50만원: ISA 국내지수 10만, ISA 미국지수 20만, 개별 종목 20만
+const MU = [0.07, 0.07, 0.08, 0], VOL = [0.22, 0.17, 0.28, 0];   // 가정: 개별 종목 5개 바구니는 연 8%, 변동성 28%
+const CORR = [[1, .6, .5, 0], [.6, 1, .75, 0], [.5, .75, 1, 0], [0, 0, 0, 1]];
+const PATHS = 4000, MONTHS = 36, DOF = 5, MONTHLY = 50;   // 매달 50만원, 3년
+const PAID3 = MONTHLY * MONTHS;                              // 넣는 돈 1,800만원
 const MI = Math.pow(1.06, 1 / 12) - 1;
-const GOAL3 = MONTHLY * (Math.pow(1 + MI, MONTHS) - 1) / MI * (1 + MI);   // 연 6%로 굴렸을 때 약 789만원
+const HLO = 1100, HSTEP = 140;
+const GOAL3 = MONTHLY * (Math.pow(1 + MI, MONTHS) - 1) / MI * (1 + MI);   // 연 6%로 굴렸을 때 약 1,972만원
 
 function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 function cholesky(A) {
@@ -656,15 +660,12 @@ function simulate(seed) {
   const cov = CORR.map((r, i) => r.map((c, j) => VOL[i] * VOL[j] * c / 12));
   const L = cholesky(cov), drift = MU.map(m => Math.log1p(m) / 12);
   const f1 = new Float64Array(PATHS), f3 = new Float64Array(PATHS);
-  const z = [0, 0, 0, 0], r = [0, 0, 0, 0], need = [0, 0, 0, 0];
+  const z = [0, 0, 0, 0], r = [0, 0, 0, 0];
   for (let p = 0; p < PATHS; p++) {
     const hold = [0, 0, 0, 0];
     for (let m = 0; m < MONTHS; m++) {
-      // 성호: 팔지 않고, 새로 넣는 20만원으로 목표보다 모자란 자산부터 채움
-      let tot = MONTHLY, ns = 0;
-      for (let a = 0; a < 4; a++) tot += hold[a];
-      for (let a = 0; a < 4; a++) { need[a] = Math.max(0, PLAN[a] * tot - hold[a]); ns += need[a]; }
-      for (let a = 0; a < 4; a++) hold[a] += ns > 0 ? need[a] / ns * MONTHLY : PLAN[a] * MONTHLY;
+      // ISA와 일반 계좌는 따로라 매달 정해진 금액을 그대로 넣음
+      for (let a = 0; a < 4; a++) hold[a] += PLAN[a] * MONTHLY;
       for (let a = 0; a < 4; a++) z[a] = tdraw();
       for (let a = 0; a < 4; a++) {
         let e = drift[a]; for (let k = 0; k <= a; k++) e += L[a][k] * z[k];
@@ -675,8 +676,8 @@ function simulate(seed) {
     f3[p] = hold[0] + hold[1] + hold[2] + hold[3];
   }
   const s1 = Array.from(f1).sort((x, y) => x - y), s3 = Array.from(f3).sort((x, y) => x - y);
-  const bins = new Array(15).fill(0);   // 3년 뒤 금액 450만 ~ 1,200만원, 50만원 간격
-  for (const v of s3) bins[Math.max(0, Math.min(14, Math.floor((v - 450) / 50)))]++;
+  const bins = new Array(15).fill(0);   // 3년 뒤 금액 1,100만 ~ 3,200만원, 140만원 간격
+  for (const v of s3) bins[Math.max(0, Math.min(14, Math.floor((v - HLO) / HSTEP)))]++;
   return {
     med3: quantile(s3, .5), goal: s3.filter(v => v >= GOAL3).length / PATHS, loss3: s3.filter(v => v < PAID3).length / PATHS,
     p5: quantile(s3, .05), med1: quantile(s1, .5), loss1: s1.filter(v => v < MONTHLY * 12).length / PATHS, bins,
@@ -731,26 +732,26 @@ function renderRun() {
     ["나쁜 5% 경우", won(r.p5), "bad", deltaW("p5")],
   ];
   $("sw-stats").innerHTML = tiles.map(([k, v, c, d]) => `<div class="stat ${c}"><small>${k}</small><strong>${v}</strong><em>${d}</em></div>`).join("");
-  $("sw-hist").setAttribute("aria-label", `3년 뒤 금액 분포. 1년 뒤 중앙 ${won(r.med1)} (원금 240만, 손실 확률 ${pct(r.loss1, 0)})`);
+  $("sw-hist").setAttribute("aria-label", `3년 뒤 금액 분포. 1년 뒤 중앙 ${won(r.med1)} (원금 600만, 손실 확률 ${pct(r.loss1, 0)})`);
   drawHist(r.bins);
   $("sw-history").innerHTML = runs.slice().reverse().map(x => `<li>${fmtKst(x.at)} ${x.auto ? "자동" : "수동"} · 3년 중앙 ${won(x.med3)} · 6% 달성 ${pct(x.goal, 0)} · 손실 ${pct(x.loss3, 0)}</li>`).join("");
 }
 function drawHist(bins) {
   const W = 412, x0 = 8, x1 = W - 8, top = 14, base = 58, max = Math.max(...bins);
-  const xv = v => x0 + (v - 450) / 750 * (x1 - x0), bw = (x1 - x0) / 15;
+  const xv = v => x0 + (v - HLO) / (HSTEP * 15) * (x1 - x0), bw = (x1 - x0) / 15;
   let s = "";
   bins.forEach((c, i) => {
-    const lo = 450 + i * 50, h = c / max * (base - top);
-    const col = lo + 50 <= PAID3 ? "#F2A0B1" : lo >= GOAL3 ? "#8FD6AE" : "#C9BDE8";
+    const lo = HLO + i * HSTEP, h = c / max * (base - top);
+    const col = lo + HSTEP <= PAID3 ? "#F2A0B1" : lo >= GOAL3 ? "#8FD6AE" : "#C9BDE8";
     s += `<rect x="${(x0 + i * bw + 1.5).toFixed(1)}" y="${(base - h).toFixed(1)}" width="${(bw - 3).toFixed(1)}" height="${h.toFixed(1)}" rx="3" fill="${col}"/>`;
   });
   s += `<line x1="${x0}" x2="${x1}" y1="${base}" y2="${base}" stroke="var(--line)" stroke-width="1.5"/>`;
-  [[PAID3, "원금 720만"], [GOAL3, "목표 789만"]].forEach(([v, lab], i) => {
+  [[PAID3, "원금 " + won(PAID3)], [GOAL3, "목표 " + won(GOAL3)]].forEach(([v, lab], i) => {
     const x = xv(v), anchor = i ? "start" : "end", tx = i ? x + 3 : x - 3;
     s += `<line x1="${x}" x2="${x}" y1="${top - 6}" y2="${base}" stroke="${i ? "#1E9E5A" : "var(--muted)"}" stroke-width="1.5" stroke-dasharray="3 3"/>`;
     s += `<text x="${tx}" y="${top - 1}" text-anchor="${anchor}" font-size="10.5" fill="${i ? "#1E9E5A" : "var(--muted)"}" font-family="Gowun Dodum, sans-serif">${lab}</text>`;
   });
-  [500, 600, 900, 1000, 1100].forEach(v => s += `<text x="${xv(v)}" y="${base + 14}" font-size="10" text-anchor="middle" fill="var(--muted)" font-family="Gowun Dodum, sans-serif">${v}만</text>`);
+  [1200, 1500, 2400, 2700, 3000].forEach(v => s += `<text x="${xv(v)}" y="${base + 14}" font-size="10" text-anchor="middle" fill="var(--muted)" font-family="Gowun Dodum, sans-serif">${v.toLocaleString("ko-KR")}만</text>`);
   $("sw-hist").innerHTML = s;
 }
 
